@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏢 Consorcio Expensas - Sistema de Notificaciones
 
-## Getting Started
+Sistema automatizado para envío de expensas, avisos de corte de luz y comunicados generales para administración de consorcios.
 
-First, run the development server:
+## 🚀 Features
 
+- ✅ Envío masivo de expensas con PDFs adjuntos
+- ✅ Avisos de corte de luz programados
+- ✅ Comunicados generales del consorcio
+- ✅ Modo test para pruebas
+- ✅ Validación de PDFs
+- ✅ Editor de templates
+- ✅ Progreso en tiempo real
+
+## 🛠️ Tech Stack
+
+- **Frontend:** Next.js 14 + TypeScript + Tailwind CSS
+- **Backend:** Next.js API Routes + Python
+- **Email:** Gmail API
+- **Archivos:** xlsx, PDFs
+
+## 📦 Instalación
+
+### Requisitos
+- Node.js 18+
+- Python 3.8+
+- Cuenta de Gmail con API habilitada
+
+### Setup
+
+1. **Clonar el repo:**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/mxrcabrera/consorcio-expensas-frontend.git
+cd consorcio-expensas-frontend
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Instalar dependencias:**
+```bash
+npm install
+pip install -r requirements.txt
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Configurar Gmail API:**
+- Ir a [Google Cloud Console](https://console.cloud.google.com/)
+- Crear proyecto y habilitar Gmail API
+- Descargar `credentials.json` y ponerlo en la raíz
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. **Iniciar desarrollo:**
+```bash
+npm run dev
+```
 
-## Learn More
+## 📁 Estructura del Proyecto
+```
+consorcio-expensas-frontend/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   └── page.tsx           # Página principal
+├── components/            # React components
+├── python/                # Scripts Python
+│   ├── expensas.py       # Sistema de envío
+│   └── wrapper.py        # CLI wrapper
+├── templates/             # Templates de emails
+└── public/               # Assets estáticos
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 🔧 Configuración
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+El sistema usa un archivo Excel (`datos_maestro.xlsx`) con las siguientes columnas:
+- `N`: Número de unidad funcional
+- `Depto`: Nombre del departamento
+- `Email`: Email del propietario
+- `Email inquilino`: Email del inquilino (opcional)
+- `CC`: Si debe enviar copia al inquilino (S/N)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📧 Uso
 
-## Deploy on Vercel
+1. Seleccionar tipo de acción (Expensas / Corte Luz / Avisos)
+2. Configurar modo test (opcional)
+3. Subir archivo Excel con destinatarios
+4. Para expensas: especificar carpeta con PDFs
+5. Revisar configuración y enviar
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔐 Seguridad
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Credenciales de Gmail nunca se suben al repo
+- Modo test para validar antes de enviar
+- Confirmación antes de envíos masivos
+
+## 👨‍💻 Desarrollo
+
+**MxrCabrera Dev** - 2025
+
+## 📄 Licencia
+
+MIT

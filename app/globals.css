@@ -1,26 +1,385 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-marble-white: #F8F6F2;
+  --color-crystal: #FEFEFC;
+  --color-stone-gray: #E8E6E1;
+  --color-quartz-vein: #D4CDC3;
+  --color-mineral-taupe: #9C958B;
+  --color-deep-stone: #2A2621;
+  --color-gold-vein: #C9B28E;
+  --color-gold-accent: #B89A6A;
+  --color-gold-light: #E8D4A0;
+  
+  --font-family-sans: var(--font-inter), system-ui, sans-serif;
+  --font-family-serif: var(--font-cormorant), Georgia, serif;
+
+  /* Existing root variables */
+  --marble-white: #F8F6F2;
+  --crystal: #FEFEFC;
+  --stone-gray: #E8E6E1;
+  --quartz-vein: #D4CDC3;
+  --mineral-taupe: #9C958B;
+  --deep-stone: #2A2621;
+  --gold-vein: #C9B28E;
+  --gold-accent: #B89A6A;
+  --crystal-glow: #F0ECE3;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ===== CONSORCIO DESIGN SYSTEM ===== */
+:root {
+  --marble-white: #F8F6F2;
+  --crystal: #FEFEFC;
+  --stone-gray: #E8E6E1;
+  --quartz-vein: #D4CDC3;
+  --mineral-taupe: #9C958B;
+  --deep-stone: #2A2621;
+  --gold-vein: #C9B28E;
+  --gold-accent: #B89A6A;
+  --crystal-glow: #F0ECE3;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: linear-gradient(135deg, var(--marble-white) 0%, var(--crystal) 50%, var(--stone-gray) 100%);
+    color: var(--deep-stone);
+    font-family: var(--font-family-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family-serif);
+    font-weight: 400;
+    letter-spacing: -0.03em;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ===== HEADER CONSORCIO ===== */
+.consorcio-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(248, 246, 242, 0.92);
+  backdrop-filter: blur(40px) saturate(200%);
+  border-bottom: 1px solid rgba(201, 178, 142, 0.2);
+}
+
+.consorcio-logo {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2C2624 0%, #1A1816 50%, #000000 100%);
+  box-shadow: 
+    0 8px 32px rgba(44, 38, 36, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(201, 169, 110, 0.3);
+}
+
+.consorcio-logo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(232, 212, 160, 0.3) 0%, transparent 70%);
+}
+
+.logo-text {
+  font-family: var(--font-family-serif);
+  font-size: 32px;
+  font-weight: 600;
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(135deg, #E8D4A0 0%, #C9A96E 50%, #B8963C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== TAGLINE ===== */
+.tagline-section {
+  background: linear-gradient(90deg, 
+    rgba(247, 243, 233, 0.5) 0%, 
+    rgba(232, 226, 213, 0.8) 50%, 
+    rgba(247, 243, 233, 0.5) 100%
+  );
+  border-top: 1px solid rgba(201, 178, 142, 0.1);
+  border-bottom: 1px solid rgba(201, 178, 142, 0.1);
+  padding: 1.5rem 0;
+}
+
+/* ===== CARDS ===== */
+.consorcio-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border-radius: 24px;
+  padding: 2.5rem;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(156, 149, 139, 0.15);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.consorcio-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card-title {
+  font-family: var(--font-family-serif);
+  font-size: 1.875rem;
+  font-weight: 500;
+  color: var(--deep-stone);
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.card-description {
+  font-size: 0.875rem;
+  color: var(--mineral-taupe);
+  line-height: 1.6;
+}
+
+/* ===== CONFIG SECTIONS ===== */
+.config-section {
+  margin-bottom: 3rem;
+}
+
+.config-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--deep-stone);
+  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.config-label::before {
+  content: '';
+  width: 2rem;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold-vein) 0%, transparent 100%);
+}
+
+/* ===== ACTION OPTIONS ===== */
+.action-option {
+  position: relative;
+  background: white;
+  border: 2px solid rgba(156, 149, 139, 0.12);
+  border-radius: 20px;
+  padding: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.action-option:hover {
+  background: linear-gradient(135deg, #FFFFFF 0%, rgba(247, 243, 233, 0.6) 100%);
+  border-color: rgba(201, 178, 142, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.action-option-selected {
+  border: 2.5px solid var(--gold-vein);
+  background: linear-gradient(135deg, #FFFFFF 0%, rgba(247, 243, 233, 0.9) 100%);
+  box-shadow: 
+    0 0 0 4px rgba(201, 178, 142, 0.1),
+    0 16px 48px rgba(201, 178, 142, 0.25);
+}
+
+.check-icon {
+  position: absolute;
+  right: 1.25rem;
+  top: 1.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--gold-vein) 0%, var(--gold-accent) 100%);
+  box-shadow: 0 4px 12px rgba(201, 178, 142, 0.4);
+}
+
+.action-code {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+}
+
+.action-code-default {
+  background: rgba(156, 149, 139, 0.08);
+  color: var(--mineral-taupe);
+  border: 1px solid rgba(156, 149, 139, 0.15);
+}
+
+.action-code-selected {
+  color: white;
+  border: 1px solid rgba(201, 178, 142, 0.2);
+  box-shadow: 0 2px 8px rgba(201, 178, 142, 0.3);
+  background: linear-gradient(135deg, var(--gold-vein) 0%, var(--gold-accent) 100%);
+}
+
+.action-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--deep-stone);
+  letter-spacing: -0.01em;
+  transition: color 0.3s ease;
+}
+
+.action-option:hover .action-label {
+  color: var(--gold-accent);
+}
+
+.action-option-selected .action-label {
+  color: var(--gold-vein);
+  font-weight: 700;
+}
+
+.action-desc {
+  font-size: 13px;
+  color: var(--mineral-taupe);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ===== PROGRESS BAR ===== */
+.progress-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(156, 149, 139, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: all 0.5s ease-out;
+  position: relative;
+  background: linear-gradient(90deg, var(--gold-accent) 0%, var(--gold-vein) 50%, var(--crystal-glow) 100%);
+  box-shadow: 0 0 12px rgba(201, 178, 142, 0.5);
+}
+
+/* ===== BUTTONS ===== */
+.btn-send-consorcio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, var(--gold-vein) 0%, var(--gold-accent) 100%);
+}
+
+.btn-send-consorcio:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, var(--gold-accent) 0%, var(--gold-vein) 100%);
+}
+
+.btn-send-consorcio:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== BADGES ===== */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  color: white;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  box-shadow: 0 2px 8px rgba(201, 178, 142, 0.3);
+  background: linear-gradient(135deg, var(--gold-vein) 0%, var(--gold-accent) 100%);
+}
+
+/* ===== SUMMARY ===== */
+.summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(156, 149, 139, 0.08);
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mineral-taupe);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.summary-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--deep-stone);
+}
+
+/* ===== FOOTER ===== */
+.consorcio-footer {
+  border-top: 1px solid rgba(201, 178, 142, 0.15);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  padding: 2rem 0;
+  margin-top: 4rem;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .consorcio-card {
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+  
+  .action-option {
+    padding: 1.5rem;
+  }
+
+  .config-section {
+    margin-bottom: 2rem;
+  }
 }
