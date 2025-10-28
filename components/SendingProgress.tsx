@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 interface SendingProgressProps {

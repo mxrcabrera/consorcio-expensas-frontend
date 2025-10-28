@@ -26,7 +26,11 @@ export async function POST(request: NextRequest) {
     const workbook = XLSX.read(fileBuffer);
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    
+    const data = XLSX.utils.sheet_to_json(worksheet, { 
+      defval: null,  // Celdas vacías = null (no las omite)
+      raw: false     // Convierte todo a string para consistencia
+    });
 
     // Limpiar archivo temporal
     await unlink(tempPath);

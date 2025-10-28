@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Badge } from './Badge';
 
 interface PDFValidatorProps {
   show: boolean;
@@ -71,15 +72,13 @@ export default function PDFValidator({ show, pdfFolder, unidades, onClose }: PDF
         </div>
 
         <div className="p-6 bg-stone-gray/20">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-sm font-semibold">{completos} completos</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-red-600" />
-              <span className="text-sm font-semibold">{incompletos} incompletos</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <Badge variant="success">
+              ✓ {completos} completos
+            </Badge>
+            <Badge variant="error">
+              ✗ {incompletos} incompletos
+            </Badge>
           </div>
         </div>
 
@@ -110,23 +109,13 @@ export default function PDFValidator({ show, pdfFolder, unidades, onClose }: PDF
                         Unidad {item.unidad}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        {item.expensas ? (
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-red-600" />
-                        )}
-                        <span className="text-xs font-mono">Expensas {item.unidad}.pdf</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.detalle ? (
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-red-600" />
-                        )}
-                        <span className="text-xs font-mono">Detalle expensas {item.unidad}.pdf</span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={item.expensas ? 'success' : 'error'} className="text-xs font-mono">
+                        {item.expensas ? '✓' : '✗'} Expensas {item.unidad}.pdf
+                      </Badge>
+                      <Badge variant={item.detalle ? 'success' : 'error'} className="text-xs font-mono">
+                        {item.detalle ? '✓' : '✗'} Detalle {item.unidad}.pdf
+                      </Badge>
                     </div>
                   </div>
                 </div>
