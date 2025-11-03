@@ -102,14 +102,14 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
       const data = await res.json();
       
       if (editorRef.current && data.content) {
-        // Parsear HTML completo
+        // Parsear HTML completo y extraer SOLO el contenido del body
         const parser = new DOMParser();
         const doc = parser.parseFromString(data.content, 'text/html');
         
-        // Extraer SOLO el innerHTML del body (mantiene todos los estilos inline)
+        // Obtener el innerHTML del body
         const bodyContent = doc.body.innerHTML.trim();
         
-        // Insertar en el editor TAL CUAL
+        // Insertar en el editor
         editorRef.current.innerHTML = bodyContent;
       }
       
@@ -122,41 +122,93 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
   };
 
   const saveTemplate = async () => {
-    if (!editorRef.current) return;
+  if (!editorRef.current) return;
+  
+  try {
+    setLoading(true);
     
-    try {
-      setLoading(true);
-      
-      // Obtener el contenido editado
-      const bodyContent = editorRef.current.innerHTML;
-      
-      // Reconstruir el HTML COMPLETO con la estructura original
-      const fullHtml = `<!DOCTYPE html>
+    // Obtener el contenido editado del body
+    const bodyContent = editorRef.current.innerHTML;
+    
+    // Reconstruir el HTML COMPLETO con estilos consistentes
+    const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Trebuchet MS', Arial, sans-serif; 
+            color: #1f4e78; 
+            line-height: 1.6;
+            background-color: #ffffff;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0 0 15px 0;
+            font-weight: bold;
+            color: #1f4e78;
+            line-height: 1.4;
+        }
+        h2 {
+            font-size: 18px;
+            margin: 20px 0 10px 0;
+            color: #1c4587;
+            font-weight: bold;
+            line-height: 1.4;
+        }
+        h3 {
+            font-size: 16px;
+            margin: 15px 0 10px 0;
+            color: #1c4587;
+            font-weight: bold;
+            line-height: 1.4;
+        }
+        p {
+            margin: 0 0 12px 0;
+            line-height: 1.6;
+        }
+        ul {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+        li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+        strong {
+            color: #1f4e78;
+            font-weight: bold;
+        }
+        hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 20px 0;
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0;">
+<body>
     ${bodyContent}
 </body>
 </html>`;
-      
-      const res = await fetch('/api/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: selectedTemplate, content: fullHtml }),
-      });
+    
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: selectedTemplate, content: fullHtml }),
+    });
 
-      if (res.ok) {
-        setToast({ show: true, message: 'Plantilla guardada exitosamente', type: 'success' });
-        setTimeout(() => onClose(), 1500);
-      }
-    } catch (error) {
-      setToast({ show: true, message: 'Error guardando plantilla', type: 'error' });
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      setToast({ show: true, message: 'Plantilla guardada exitosamente', type: 'success' });
+      setTimeout(() => onClose(), 1500);
     }
-  };
+  } catch (error) {
+    setToast({ show: true, message: 'Error guardando plantilla', type: 'error' });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);

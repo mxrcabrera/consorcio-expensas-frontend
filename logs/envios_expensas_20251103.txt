@@ -1,0 +1,32 @@
+[2025-11-03_15-56-59] 1A (dra.andreafraschina@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-01] 1B (jony_d_luna@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-03] 1C (emilianomojo@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-04] 1D (higinioernesto@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-05] 2A (orly.cancino@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-07] 2B (fabianaor.07@hotmail.com;wilsonbrojas@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-08] 2C (emilianomojo@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-10] 2D (azeemgroup.ar@gmail.com;proyectouno.ar@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-11] 3A (cedamaya@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-13] 3B (lattanzipn@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-14] 3C (emilianomojo@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-16] 3D (maria.rubini@bue.edu.ar) - ✓ ENVIADO
+[2025-11-03_15-57-17] 4A (elmillo8696@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-19] 4B (rsperez2007@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-20] 4C (emilianomojo@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-22] 4D (sebabrune@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-23] 5A (nan) - ✓ ENVIADO
+[2025-11-03_15-57-25] 5B (dra.andreafraschina@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-26] 5C (chlatt@hotmail.com.ar) - ✓ ENVIADO
+[2025-11-03_15-57-28] 5D (jodelcampo73@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-29] 6A (lagrotta04@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-30] 6B (guillermoxarrier@yahoo.com.ar) - ✓ ENVIADO
+[2025-11-03_15-57-32] 6C (lattanzipn@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-34] 6D (Intiarte@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-35] 7A (lattanzipn@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-36] 7C (gimena.oliver@atrimglobal.com) - ✓ ENVIADO
+[2025-11-03_15-57-38] 7D (gsm@gsmanalisis.com) - ✓ ENVIADO
+[2025-11-03_15-57-39] 8A (ezequiel_esposito@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-41] COCHERA 1 (lattanzipn@gmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-42] COCHERA 2 (elmillo8696@hotmail.com) - ✓ ENVIADO
+[2025-11-03_15-57-43] COCHERA 3 (gsm@gsmanalisis.com) - ✓ ENVIADO
+[2025-11-03_15-57-45] COCHERA 4 (lattanzipn@gmail.com) - ✓ ENVIADO

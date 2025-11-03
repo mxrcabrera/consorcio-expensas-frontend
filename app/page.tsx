@@ -24,24 +24,29 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
       action === 'corte_luz' ? 'corte_luz.html' :
       'aviso_general.html';
     
-    // Cargar template con timestamp para evitar cache
+    // Cargar template completo
     fetch(`/api/templates?file=${fileName}&t=${Date.now()}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.content) {
+          // Extraer solo el contenido del body manteniendo los estilos
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(data.content, 'text/html');
+          const bodyContent = doc.body.innerHTML;
+          setTemplateContent(bodyContent);
+        }
+      })
+      .catch(err => console.error('Error cargando preview:', err));
+    
+    // Cargar firma completa
+    fetch(`/api/templates?file=firma.html&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         if (data.content) {
           const parser = new DOMParser();
           const doc = parser.parseFromString(data.content, 'text/html');
-          setTemplateContent(doc.body.innerHTML);
-        }
-      })
-      .catch(err => console.error('Error cargando preview:', err));
-    
-    // Cargar firma
-    fetch(`/api/templates?file=firma.html&t=${Date.now()}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.content) {
-          setFirmaContent(data.content);
+          const bodyContent = doc.body.innerHTML;
+          setFirmaContent(bodyContent);
         }
       })
       .catch(err => console.error('Error cargando firma:', err));
@@ -52,16 +57,30 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
   }
 
   return (
-    <div style={{ fontSize: '14px', lineHeight: '1.5' }}>
-      {/* Contenido del template */}
-      <div dangerouslySetInnerHTML={{ __html: templateContent }} />
+    <div>
+      {/* Contenido del template - con estilos azules */}
+      <div 
+        dangerouslySetInnerHTML={{ __html: templateContent }}
+        style={{
+          fontFamily: "'Trebuchet MS', Arial, sans-serif",
+          color: '#1f4e78',
+          lineHeight: '1.6',
+          backgroundColor: '#ffffff',
+          padding: '0'
+        }}
+      />
       
-      {/* Firma */}
+      {/* Firma - con sus propios estilos (sin color azul) */}
       {firmaContent && (
-        <>
-          <hr style={{ border: 'none', borderTop: '1px solid #cccccc', margin: '20px 0' }} />
-          <div dangerouslySetInnerHTML={{ __html: firmaContent }} />
-        </>
+        <div 
+          dangerouslySetInnerHTML={{ __html: firmaContent }}
+          style={{
+            fontFamily: "'Trebuchet MS', Arial, sans-serif",
+            lineHeight: '1.5',
+            backgroundColor: '#ffffff'
+            // NO aplicamos color aquí para que use los estilos de la firma
+          }}
+        />
       )}
     </div>
   );
