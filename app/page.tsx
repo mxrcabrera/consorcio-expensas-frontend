@@ -1,6 +1,6 @@
 'use client';
 
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, Zap, Bell, Upload, Check, X, Send, FileSpreadsheet } from 'lucide-react';
 import Header from '@/components/Header';
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -101,6 +101,7 @@ export default function Home() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendingProgress, setSendingProgress] = useState({ sent: 0, total: 0, errors: 0 });
+  const [progressLines, setProgressLines] = useState<string[]>([]); // 🔥 NUEVO
   const [result, setResult] = useState<SendResult | null>(null);
 
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
@@ -191,6 +192,7 @@ export default function Home() {
     setShowConfirmation(false);
     setSending(true);
     setResult(null);
+    setProgressLines([]); // 🔥 LIMPIAR LÍNEAS
 
     const totalItems = totalUnidades;
     setSendingProgress({ sent: 0, total: totalItems, errors: 0 });
@@ -235,6 +237,7 @@ export default function Home() {
               const data = JSON.parse(line.slice(6));
 
               if (data.type === 'progress') {
+                setProgressLines(prev => [...prev, data.line]); // 🔥 AGREGAR LÍNEA
                 sentCount++;
                 setSendingProgress({ sent: sentCount, total: totalItems, errors: 0 });
               } else if (data.type === 'complete') {
@@ -286,8 +289,6 @@ export default function Home() {
       </div>
 
       <main className="max-w-5xl mx-auto px-6 py-12">
-        {/* UTILIDADES */}
-
         {/* SECCIÓN 1: TIPO DE ENVÍO */}
         <section className="config-section">
           <div className="config-label">
@@ -730,6 +731,7 @@ export default function Home() {
         sent={sendingProgress.sent}
         total={sendingProgress.total}
         errors={sendingProgress.errors}
+        lines={progressLines}
       />
 
       <TemplateEditor

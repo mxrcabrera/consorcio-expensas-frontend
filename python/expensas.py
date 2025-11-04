@@ -47,6 +47,8 @@ class Config:
     # Archivos
     TOKEN_FILE = 'token.pickle'
     CREDENTIALS_FILE = 'credentials.json'
+
+    AUTO_CONFIRM = False
     
     MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
@@ -218,6 +220,9 @@ def html_a_texto_simple(html):
 
 def confirmar_accion(mensaje="¿CONFIRMAR?"):
     """Solicita confirmación al usuario"""
+    if Config.AUTO_CONFIRM:
+        print(f"{mensaje} -> AUTO-CONFIRMADO", flush=True)
+        return True
     respuesta = input(f"{mensaje} (S/N): ")
     return respuesta.upper() == 'S'
 
@@ -376,16 +381,38 @@ def enviar_expensas_mensuales():
         email_prop = row['Email_Propietario']
         email_inq = row.get('Email_Inquilino', '')
         
+        # ✅ Validar si hay al menos UN email
+        tiene_email_prop = not (pd.isna(email_prop) or not email_prop or str(email_prop).strip() == '')
+        tiene_email_inq = not (pd.isna(email_inq) or not email_inq or str(email_inq).strip() == '')
+        
+        if not tiene_email_prop and not tiene_email_inq:
+            print(f"  ⊗ {depto} - Sin email del propietario ni inquilino, SALTEADO")
+            salteados += 1
+            continue
+        
         # Verificar PDFs
         if not pdfs_completos(n):
             print(f"  ⊗ {depto} - PDFs incompletos, SALTEADO")
             salteados += 1
             continue
         
+        # Determinar destinatario y CC
+        if tiene_email_prop:
+            # Caso normal: hay propietario
+            email_destino = email_prop
+            email_cc = procesar_email_cc(email_inq) if tiene_email_inq else None
+            nota_envio = f"Prop: {email_destino}"
+            if email_cc:
+                nota_envio += f" (CC Inq: {email_cc})"
+        else:
+            # Caso especial: solo inquilino
+            email_destino = email_inq
+            email_cc = None
+            nota_envio = f"Inq: {email_destino} (sin prop)"
+        
         # Preparar email
-        destinatario = Config.EMAIL_TEST if Config.MODO_TEST else email_prop
-        cc_real = procesar_email_cc(email_inq)  # Email real del inquilino para mostrar
-        cc_envio = Config.EMAIL_TEST if (Config.MODO_TEST and cc_real) else cc_real  # Email a donde realmente se envía
+        destinatario = Config.EMAIL_TEST if Config.MODO_TEST else email_destino
+        cc_envio = Config.EMAIL_TEST if (Config.MODO_TEST and email_cc) else email_cc
         
         asunto = generar_asunto_expensa(tipo_unidad, depto, mes_expensas)
         cuerpo_html = plantilla.replace('{mes_expensas}', mes_expensas) + firma_html
@@ -396,17 +423,16 @@ def enviar_expensas_mensuales():
         exito, resultado = enviar_email(service, email_msg)
         
         if exito:
-            cc_text = f" (CC: {cc_real})" if cc_real else ""
             if Config.MODO_TEST:
-                print(f"  ✓ {depto} - [{email_prop}] → {destinatario}{cc_text}", flush=True)
+                print(f"  ✓ {depto} - [{nota_envio}] → {destinatario}", flush=True)
             else:
-                print(f"  ✓ {depto} ({destinatario}){cc_text}", flush=True)
+                print(f"  ✓ {depto} ({nota_envio})", flush=True)
             enviados += 1
-            log_envio('expensas', email_prop, depto, True)
+            log_envio('expensas', email_destino, depto, True)
         else:
-            print(f"  ✗ {depto} ({email_prop}) - Error: {resultado}")
+            print(f"  ✗ {depto} ({nota_envio}) - Error: {resultado}")
             errores += 1
-            log_envio('expensas', email_prop, depto, False, resultado)
+            log_envio('expensas', email_destino, depto, False, resultado)
     
     imprimir_resumen_final(enviados, errores, salteados)
 
@@ -633,5 +659,68 @@ def menu_principal():
             print("\n❌ Opción inválida")
 
 
+# ============ CLI PARA WEB ============
+def main():
+    """Punto de entrada con soporte para CLI"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Sistema de envío de expensas')
+    parser.add_argument('--action', choices=['expensas', 'corte_luz', 'avisos_generales'])
+    parser.add_argument('--test-mode', default='false')
+    parser.add_argument('--test-email', default='')
+    parser.add_argument('--data-file')
+    parser.add_argument('--pdf-folder', default='')
+    parser.add_argument('--plantillas-dir', default='')
+    parser.add_argument('--dias-corte', type=int, default=5)
+    parser.add_argument('--subject', default='')
+    parser.add_argument('--no-confirm', action='store_true')
+    
+    args = parser.parse_args()
+    
+    # Si no hay argumentos, mostrar menú
+    if not args.action:
+        menu_principal()
+        return
+    
+    # Configurar
+    Config.MODO_TEST = args.test_mode.lower() == 'true'
+    Config.AUTO_CONFIRM = args.no_confirm
+    
+    if Config.MODO_TEST and args.test_email:
+        Config.EMAIL_TEST = args.test_email
+    
+    if args.data_file:
+        Config.DATOS_MAESTRO = args.data_file
+    
+    if args.pdf_folder:
+        Config.PDFS_DIR = args.pdf_folder
+
+    if args.plantillas_dir:
+        Config.PLANTILLAS_DIR = args.plantillas_dir
+    
+    print(f"🚀 Iniciando {args.action}...", flush=True)
+    print(f"📁 Excel: {Config.DATOS_MAESTRO}", flush=True)
+    print(f"📁 PDFs: {Config.PDFS_DIR}", flush=True)
+    print(f"🧪 Test mode: {Config.MODO_TEST}", flush=True)
+    
+    # Ejecutar
+    try:
+        if args.action == 'expensas':
+            enviados, errores = enviar_expensas_mensuales()
+        elif args.action == 'corte_luz':
+            enviados, errores = enviar_avisos_corte_luz()
+        elif args.action == 'avisos_generales':
+            enviados, errores = enviar_avisos_generales(asunto=args.subject)
+        
+        print(f"\n✅ COMPLETADO", flush=True)
+        print(f"Enviados: {enviados}", flush=True)
+        print(f"Errores: {errores}", flush=True)
+        
+    except Exception as e:
+        print(f"\n❌ ERROR: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc()
+
+
 if __name__ == "__main__":
-    menu_principal()
+    main()

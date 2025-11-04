@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
           const dataFile = formData.get('dataFile') as File;
 
           if (!action || !dataFile) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Faltan parámetros' })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'error', 
+              message: 'Faltan parámetros' 
+            })}\n\n`));
             controller.close();
             return;
           }
@@ -34,12 +37,13 @@ export async function POST(request: NextRequest) {
 
           const args = [
             '-u',
-            path.join(process.cwd(), 'python', 'wrapper.py'),
+            path.join(process.cwd(), 'python', 'expensas.py'),
             '--action', action,
             '--test-mode', testMode.toString(),
             '--test-email', testEmail,
             '--data-file', tempExcelPath,
             '--pdf-folder', pdfFolder,
+            '--plantillas-dir', path.join(process.cwd(), 'templates'),
             '--dias-corte', diasCorte,
             '--no-confirm',
           ];
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
             args.push('--subject', subject);
           }
 
-          console.log('🐍 Ejecutando Python...');
+          console.log('🐍 Ejecutando Python:', args.join(' '));
 
           const pythonProcess = spawn('python', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
           let outputBuffer = '';
           let errorBuffer = '';
 
-          // PROCESAR LÍNEA POR LÍNEA EN TIEMPO REAL
+          // Leer stdout línea por línea
           const rl = createInterface({
             input: pythonProcess.stdout,
             crlfDelay: Infinity
@@ -72,63 +76,87 @@ export async function POST(request: NextRequest) {
             outputBuffer += line + '\n';
             console.log('📤', line);
             
-            // Detectar envío de email INMEDIATAMENTE
-            const esEnvioReal = line.includes('✓') && 
-                                line.includes('  ✓') &&
-                                (line.match(/\(.+@.+\)/) || line.includes('→'));
-            
-            if (esEnvioReal) {
-              console.log('✅ Email detectado, enviando evento AHORA...');
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                type: 'progress', 
-                line: line.trim() 
-              })}\n\n`));
-            }
+            // Enviar TODAS las líneas al frontend
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'progress', 
+              line: line.trim() 
+            })}\n\n`));
           });
 
+          // Capturar errores
           pythonProcess.stderr.on('data', (data) => {
-            errorBuffer += data.toString();
-            console.error('❌ Python error:', data.toString());
+            const errorText = data.toString();
+            errorBuffer += errorText;
+            console.error('❌ Python stderr:', errorText);
+            
+            // Enviar errores también
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'error', 
+              line: errorText.trim() 
+            })}\n\n`));
           });
 
+          // Cuando termina el proceso
           pythonProcess.on('close', async (code) => {
+            clearTimeout(timeoutId);
             console.log('🏁 Python terminó con código:', code);
             
+            // Limpiar archivo temporal
             try {
               await fs.unlink(tempExcelPath);
-            } catch {}
+            } catch (err) {
+              console.warn('⚠️  No se pudo eliminar archivo temporal:', err);
+            }
 
             if (code === 0) {
-              const match = outputBuffer.match(/enviados:\s*(\d+)/i) || outputBuffer.match(/(\d+)\s+enviados/i);
-              const errorsMatch = outputBuffer.match(/errores:\s*(\d+)/i) || outputBuffer.match(/(\d+)\s+errores/i);
+              // Buscar resumen (case-insensitive)
+              const matchSent = outputBuffer.match(/enviados:\s*(\d+)/i);
+              const matchErrors = outputBuffer.match(/errores:\s*(\d+)/i);
+              const matchSalteados = outputBuffer.match(/salteados:\s*(\d+)/i);
               
-              const sent = match ? parseInt(match[1]) : 0;
-              const errors = errorsMatch ? parseInt(errorsMatch[1]) : 0;
+              const sent = matchSent ? parseInt(matchSent[1]) : 0;
+              const errors = matchErrors ? parseInt(matchErrors[1]) : 0;
+              const salteados = matchSalteados ? parseInt(matchSalteados[1]) : 0;
 
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'complete',
                 success: true,
                 sent,
                 errors,
-                message: `Envío completado: ${sent} emails enviados`
+                salteados,
+                message: `✅ Completado: ${sent} enviados, ${errors} errores, ${salteados} salteados`
               })}\n\n`));
             } else {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'complete',
                 success: false,
-                message: `Error: ${errorBuffer}`
+                message: errorBuffer || 'Error desconocido en Python'
               })}\n\n`));
             }
 
             controller.close();
           });
 
+          // Timeout de seguridad (5 minutos)
+          const timeoutId = setTimeout(() => {
+            if (!pythonProcess.killed) {
+              console.warn('⏰ Timeout: matando proceso Python');
+              pythonProcess.kill();
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'complete',
+                success: false,
+                message: 'Timeout: El proceso tardó más de 5 minutos'
+              })}\n\n`));
+              controller.close();
+            }
+          }, 5 * 60 * 1000);
+
         } catch (error: any) {
           console.error('💥 Error en streaming:', error);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
             success: false,
-            message: 'Error del servidor'
+            message: `Error del servidor: ${error.message}`
           })}\n\n`));
           controller.close();
         }
