@@ -22,7 +22,7 @@ export default function FileUpload({ file, onFileSelect }: FileUploadProps) {
 
   return (
     <div className="config-section">
-      <h3 className="config-label">Archivo de Datos</h3>
+      <div className="config-label">Archivo de Datos</div>
 
       <div className="consorcio-card">
         <input
@@ -33,51 +33,45 @@ export default function FileUpload({ file, onFileSelect }: FileUploadProps) {
           className="hidden"
         />
 
-        <div
-          onClick={handleClick}
-          className="border-2 border-dashed border-mineral-taupe/30 rounded-2xl p-8
-                   hover:border-gold-vein/50 transition-colors cursor-pointer
-                   flex flex-col items-center justify-center gap-4 text-center"
-        >
-          {file ? (
-            <>
-              <CheckCircle className="w-12 h-12 text-gold-vein" />
-              <div>
-                <p className="text-base font-semibold text-deep-stone">
-                  {file.name}
-                </p>
-                <p className="text-sm text-mineral-taupe mt-1">
-                  {(file.size / 1024).toFixed(2)} KB
-                </p>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFileSelect(null);
-                }}
-                className="btn-text-consorcio"
-              >
-                Cambiar archivo
-              </button>
-            </>
-          ) : (
-            <>
-              <Upload className="w-12 h-12 text-mineral-taupe" />
-              <div>
-                <p className="text-base font-semibold text-deep-stone">
-                  Arrastrá o hacé click para subir
-                </p>
-                <p className="text-sm text-mineral-taupe mt-1">
-                  Excel o CSV con datos de propietarios
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-mineral-taupe">
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Formatos: .xlsx, .xls, .csv</span>
-              </div>
-            </>
-          )}
-        </div>
+        {file ? (
+          <div className="pdf-loaded">
+            <div className="pdf-loaded-icon">
+              <CheckCircle className="file-upload-icon-success" />
+            </div>
+            <p className="file-upload-filename">{file.name}</p>
+            <p className="file-upload-filesize">
+              {(file.size / 1024).toFixed(2)} KB
+            </p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFileSelect(null);
+              }}
+              className="btn-text-consorcio"
+            >
+              Cambiar archivo
+            </button>
+          </div>
+        ) : (
+          <div onClick={handleClick} className="pdf-dropzone">
+            <div className="pdf-dropzone-icon">
+              <Upload className="w-8 h-8" />
+            </div>
+            
+            <h4 className="pdf-dropzone-title">
+              Arrastrá o hacé click para subir
+            </h4>
+            
+            <p className="pdf-dropzone-subtitle">
+              Excel o CSV con datos de propietarios
+            </p>
+            
+            <div className="file-upload-format-hint">
+              <FileSpreadsheet className="file-upload-icon-small" />
+              <span>Formatos: .xlsx, .xls, .csv</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

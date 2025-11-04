@@ -1,4 +1,3 @@
-import React from 'react';
 
 interface ProgressBarProps {
   percentage: number;
@@ -6,20 +5,13 @@ interface ProgressBarProps {
 
 export default function ProgressBar({ percentage }: ProgressBarProps) {
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-mineral-taupe uppercase tracking-wider">
-          Progreso de Configuración
-        </span>
-        <span className="text-sm font-bold text-gold-vein">
-          {percentage}%
-        </span>
+    <div className="progress-bar-wrapper">
+      <div className="progress-bar-header">
+        <span className="progress-bar-label">Progreso de Configuración</span>
+        <span className="progress-bar-value">{percentage}%</span>
       </div>
       <div className="progress-container">
-        <div
-          className="progress-fill"
-          style={{ width: `${percentage}%` }}
-        />
+        <div className="progress-fill" style={{ width: `${percentage}%` }} />
       </div>
     </div>
   );

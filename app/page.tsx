@@ -25,12 +25,10 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
       action === 'corte_luz' ? 'corte_luz.html' :
       'aviso_general.html';
     
-    // Cargar template completo
     fetch(`/api/templates?file=${fileName}&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         if (data.content) {
-          // Extraer solo el contenido del body manteniendo los estilos
           const parser = new DOMParser();
           const doc = parser.parseFromString(data.content, 'text/html');
           const bodyContent = doc.body.innerHTML;
@@ -39,7 +37,6 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
       })
       .catch(err => console.error('Error cargando preview:', err));
     
-    // Cargar firma completa
     fetch(`/api/templates?file=firma.html&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
@@ -54,33 +51,20 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
   }, [action, refreshKey]);
 
   if (!templateContent) {
-    return <p className="text-sm text-mineral-taupe">Cargando preview...</p>;
+    return <p className="loading-text">Cargando preview...</p>;
   }
 
   return (
     <div>
-      {/* Contenido del template - con estilos azules */}
       <div 
         dangerouslySetInnerHTML={{ __html: templateContent }}
-        style={{
-          fontFamily: "'Trebuchet MS', Arial, sans-serif",
-          color: '#1f4e78',
-          lineHeight: '1.6',
-          backgroundColor: '#ffffff',
-          padding: '0'
-        }}
+        className="template-preview-content"
       />
       
-      {/* Firma - con sus propios estilos (sin color azul) */}
       {firmaContent && (
         <div 
           dangerouslySetInnerHTML={{ __html: firmaContent }}
-          style={{
-            fontFamily: "'Trebuchet MS', Arial, sans-serif",
-            lineHeight: '1.5',
-            backgroundColor: '#ffffff'
-            // NO aplicamos color aquí para que use los estilos de la firma
-          }}
+          className="template-preview-firma"
         />
       )}
     </div>
@@ -193,7 +177,7 @@ export default function Home() {
     setShowConfirmation(false);
     setSending(true);
     setResult(null);
-    setProgressLines([]); // 🔥 LIMPIAR LÍNEAS
+    setProgressLines([]); // LIMPIAR LÍNEAS
 
     const totalItems = totalUnidades;
     setSendingProgress({ sent: 0, total: totalItems, errors: 0 });
@@ -238,7 +222,7 @@ export default function Home() {
               const data = JSON.parse(line.slice(6));
 
               if (data.type === 'progress') {
-                setProgressLines(prev => [...prev, data.line]); // 🔥 AGREGAR LÍNEA
+                setProgressLines(prev => [...prev, data.line]);
                 sentCount++;
                 setSendingProgress({ sent: sentCount, total: totalItems, errors: 0 });
               } else if (data.type === 'complete') {
@@ -313,17 +297,8 @@ export default function Home() {
                     </div>
                   )}
                   
-                  <div style={{ 
-                    width: '64px', 
-                    height: '64px', 
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 1rem',
-                    background: 'var(--stone-gray)'
-                  }}>
-                    <Icon className="w-8 h-8" style={{ stroke: 'var(--mineral-taupe)' }} />
+                  <div className="action-icon-container">
+                    <Icon />
                   </div>
                   
                   <h3 className="action-label">{action.title}</h3>
@@ -502,39 +477,34 @@ export default function Home() {
                 </div>
                 
                 <div className="consorcio-card">
-                  <label className="flex items-center gap-3 p-4 bg-gold-vein/5 rounded-lg border-2 border-gold-vein/20 cursor-pointer hover:bg-gold-vein/10 transition-colors mb-4">
+                  <label className="recipients-select-all">
                     <input
                       type="checkbox"
                       checked={selectAll}
                       onChange={toggleSelectAll}
-                      className="w-5 h-5"
                     />
-                    <span className="font-semibold text-deep-stone">
+                    <span className="recipients-select-all-label">
                       Enviar a todos ({excelUnidades.length} departamentos)
                     </span>
                   </label>
                   
                   {!selectAll && (
-                    <div className="max-h-64 overflow-y-auto space-y-2">
+                    <div className="recipients-list">
                       {excelData.map((row, idx) => {
                         const depto = row.Depto || row.depto || row.N || row.n;
                         const nombre = row.Nombre || row.nombre || '';
                         const email = row.Email || row.email || '';
                         
                         return (
-                          <label
-                            key={idx}
-                            className="flex items-center gap-3 p-3 rounded-lg hover:bg-stone-gray/30 cursor-pointer transition-colors"
-                          >
+                          <label key={idx} className="recipient-item">
                             <input
                               type="checkbox"
                               checked={selectedDeptos.includes(depto)}
                               onChange={() => toggleDepto(depto)}
-                              className="w-4 h-4"
                             />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-deep-stone">{depto} - {nombre}</p>
-                              <p className="text-xs text-mineral-taupe">{email}</p>
+                            <div className="recipient-item-content">
+                              <p className="recipient-item-name">{depto} - {nombre}</p>
+                              <p className="recipient-item-email">{email}</p>
                             </div>
                           </label>
                         );
@@ -542,7 +512,7 @@ export default function Home() {
                     </div>
                   )}
                   
-                  <p className="text-sm text-mineral-taupe mt-4">
+                  <p className="recipients-count">
                     {selectedDeptos.length} destinatario{selectedDeptos.length !== 1 ? 's' : ''} seleccionado{selectedDeptos.length !== 1 ? 's' : ''}
                   </p>
                 </div>
@@ -561,10 +531,8 @@ export default function Home() {
                 
                 <div className="consorcio-card">
                   {/* ASUNTO */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-deep-stone mb-3">
-                      Asunto del email
-                    </label>
+                  <div className="email-subject-section">
+                    <label className="email-subject-label">Asunto del email</label>
                     
                     {config.action === 'avisos_generales' ? (
                       <input
@@ -597,10 +565,8 @@ export default function Home() {
 
                   {/* CONTENIDO */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="block text-sm font-semibold text-deep-stone">
-                        Contenido del email
-                      </label>
+                    <div className="email-content-header">
+                      <label className="email-content-label">Contenido del email</label>
                       <button
                         onClick={() => setShowTemplateEditor(true)}
                         className="btn-secondary-consorcio"
@@ -610,14 +576,11 @@ export default function Home() {
                       </button>
                     </div>
                     
-                    {/* Preview del template */}
                     <div className="email-preview-container">
-                      {/* Header simple */}
                       <div className="email-preview-header">
-                        <span className="text-xs font-medium text-mineral-taupe">Vista previa del email</span>
+                        <span>Vista previa del email</span>
                       </div>
                       
-                      {/* Contenido del template */}
                       <div className="email-preview-body">
                         <TemplatePreview action={config.action} refreshKey={refreshKey} />
                       </div>
@@ -634,16 +597,17 @@ export default function Home() {
             ) && (
               <section className="config-section">
                 <div className="consorcio-card">
-                  <label className="flex items-start gap-3 cursor-pointer">
+                  <label className="test-mode-full-wrapper">
                     <input
                       type="checkbox"
                       checked={config.testMode}
                       onChange={(e) => setConfig({ ...config, testMode: e.target.checked })}
-                      className="w-5 h-5 mt-1"
                     />
-                    <div className="flex-1">
-                      <p className="font-semibold text-deep-stone">Modo de prueba</p>
-                      <p className="text-sm text-mineral-taupe mt-1">Enviar todos los emails solo a mi dirección</p>
+                    <div className="test-mode-full-content">
+                      <p className="test-mode-full-title">Modo de prueba</p>
+                      <p className="test-mode-full-description">
+                        Enviar todos los emails solo a mi dirección
+                      </p>
                       
                       {config.testMode && (
                         <input
@@ -651,7 +615,7 @@ export default function Home() {
                           value={config.testEmail}
                           onChange={(e) => setConfig({ ...config, testEmail: e.target.value })}
                           placeholder="tu@email.com"
-                          className="w-full px-4 py-3 border-2 border-mineral-taupe/20 rounded-lg mt-3 focus:outline-none focus:border-gold-vein"
+                          className="test-mode-email-input"
                         />
                       )}
                     </div>
@@ -665,7 +629,7 @@ export default function Home() {
               (config.action === 'expensas' && pdfFiles.length > 0) || 
               (config.action !== 'expensas' && selectedDeptos.length > 0)
             ) && (
-              <div className="flex justify-center mt-12">
+              <div className="send-button-wrapper">
                 <button
                   onClick={() => {
                     if (config.testMode && !config.testEmail) {
@@ -675,7 +639,7 @@ export default function Home() {
                     setShowConfirmation(true);
                   }}
                   disabled={sending}
-                  className="btn-send-consorcio text-lg px-12 py-4"
+                  className="btn-send-consorcio send-button-large"
                 >
                   <Send className="w-6 h-6" />
                   ENVIAR {config.action === 'expensas' ? 'EXPENSAS' : config.action === 'corte_luz' ? 'AVISOS' : 'COMUNICADO'}
@@ -687,32 +651,24 @@ export default function Home() {
 
         {/* RESULTADO */}
         {result && (
-          <div className={`mt-10 consorcio-card ${
-            result.success 
-              ? 'border-2 border-gold-vein/50' 
-              : 'border-2 border-red-400/50'
+          <div className={`result-card consorcio-card ${
+            result.success ? 'result-card-success' : 'result-card-error'
           }`}>
-            <div className="flex items-start gap-4">
+            <div className="result-card-content">
               {result.success ? (
-                <Check className="w-10 h-10 text-gold-vein shrink-0" />
+                <Check className="result-card-icon result-card-icon-success" />
               ) : (
-                <X className="w-10 h-10 text-red-600 shrink-0" />
+                <X className="result-card-icon result-card-icon-error" />
               )}
               
-              <div className="flex-1">
-                <h3 className="text-xl font-serif font-semibold mb-2 text-deep-stone">
-                  {result.message}
-                </h3>
+              <div className="result-card-body">
+                <h3 className="result-card-title">{result.message}</h3>
                 
                 {result.success && (
-                  <div className="flex gap-3 mt-4">
-                    <Badge variant="success">
-                      ✓ {result.sent} enviados
-                    </Badge>
+                  <div className="result-card-badges">
+                    <Badge variant="success">✓ {result.sent} enviados</Badge>
                     {result.errors > 0 && (
-                      <Badge variant="error">
-                        ✗ {result.errors} errores
-                      </Badge>
+                      <Badge variant="error">✗ {result.errors} errores</Badge>
                     )}
                   </div>
                 )}

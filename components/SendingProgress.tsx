@@ -18,8 +18,6 @@ export default function SendingProgress({
   errors,
   lines = [],
 }: SendingProgressProps) {
-  if (!show) return null;
-
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,52 +26,54 @@ export default function SendingProgress({
     }
   }, [lines]);
 
+  if (!show) return null;
+
   const percentage = total > 0 ? Math.round((sent / total) * 100) : 0;
   const hasProgress = total > 0;
 
+  const getLineClass = (line: string) => {
+    if (line.includes('✓')) return 'log-line-success';
+    if (line.includes('✗') || line.includes('ERROR')) return 'log-line-error';
+    if (line.includes('⊗') || line.includes('SALTEADO')) return 'log-line-warning';
+    if (line.includes('📋') || line.includes('📦') || line.includes('🔐')) return 'log-line-info';
+    if (line.includes('===')) return 'log-line-separator';
+    return 'log-line-default';
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-8 max-h-[80vh] flex flex-col">
-        <div className="flex flex-col items-center gap-4 mb-4">
-          <Loader2 className="w-12 h-12 text-gold-vein animate-spin" />
+    <div className="sending-progress-overlay">
+      <div className="sending-progress-container">
+        <div className="sending-progress-header">
+          <Loader2 className="sending-progress-spinner" />
           
-          <div className="text-center w-full">
-            <h3 className="text-2xl font-serif font-semibold text-deep-stone mb-2">
-              Enviando...
-            </h3>
-            <p className="text-sm text-mineral-taupe">
-              Procesando notificaciones
-            </p>
+          <div className="sending-progress-title-group">
+            <h3 className="sending-progress-title">Enviando...</h3>
+            <p className="sending-progress-subtitle">Procesando notificaciones</p>
           </div>
 
           {hasProgress && (
             <>
-              <div className="w-full">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-mineral-taupe">
-                    Progreso
-                  </span>
-                  <span className="text-sm font-bold text-gold-vein">
+              <div className="sending-progress-bar-wrapper">
+                <div className="sending-progress-bar-header">
+                  <span className="sending-progress-bar-label">Progreso</span>
+                  <span className="sending-progress-bar-value">
                     {sent} / {total}
                   </span>
                 </div>
-                <div className="progress-container h-3">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${percentage}%` }}
-                  />
+                <div className="progress-container" style={{ height: '0.75rem' }}>
+                  <div className="progress-fill" style={{ width: `${percentage}%` }} />
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 w-full justify-center">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-semibold">{sent} enviados</span>
+              <div className="sending-progress-stats">
+                <div className="sending-progress-stat">
+                  <CheckCircle className="sending-progress-stat-icon-success" />
+                  <span className="sending-progress-stat-label">{sent} enviados</span>
                 </div>
                 {errors > 0 && (
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-5 h-5 text-red-600" />
-                    <span className="text-sm font-semibold">{errors} errores</span>
+                  <div className="sending-progress-stat">
+                    <XCircle className="sending-progress-stat-icon-error" />
+                    <span className="sending-progress-stat-label">{errors} errores</span>
                   </div>
                 )}
               </div>
@@ -81,30 +81,15 @@ export default function SendingProgress({
           )}
         </div>
 
-        {/* Log de líneas en tiempo real */}
-        <div className="flex-1 overflow-hidden border border-gray-200 rounded-lg bg-gray-50">
-          <div 
-            ref={logContainerRef}
-            className="h-full overflow-y-auto p-4 font-mono text-xs space-y-1"
-            style={{ maxHeight: '400px' }}
-          >
+        <div className="sending-progress-log">
+          <div ref={logContainerRef} className="sending-progress-log-content">
             {lines.length === 0 ? (
-              <div className="text-gray-400 text-center py-8">
+              <div className="sending-progress-log-empty">
                 Esperando salida de Python...
               </div>
             ) : (
               lines.map((line, i) => (
-                <div
-                  key={i}
-                  className={`${
-                    line.includes('✓') ? 'text-green-700' :
-                    line.includes('✗') || line.includes('ERROR') ? 'text-red-700' :
-                    line.includes('⊗') || line.includes('SALTEADO') ? 'text-yellow-700' :
-                    line.includes('📋') || line.includes('📦') || line.includes('🔐') ? 'text-blue-700 font-semibold' :
-                    line.includes('===') ? 'text-gray-500 font-bold' :
-                    'text-gray-700'
-                  }`}
-                >
+                <div key={i} className={`sending-progress-log-line ${getLineClass(line)}`}>
                   {line}
                 </div>
               ))

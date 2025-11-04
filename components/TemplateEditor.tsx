@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Save, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import { ActionType } from '@/types';
 import Toast from './Toast';
@@ -33,20 +33,17 @@ const FONTS = [
   'Impact'
 ];
 
-// Ícono personalizado estilo Gmail
 const TextColorIcon = () => (
-  <div className="relative w-5 h-5 flex items-center justify-center">
-    <span className="font-bold text-sm" style={{ color: '#000' }}>A</span>
-    <div className="absolute bottom-0 left-0 right-0 h-1 flex">
-      <div className="flex-1" style={{ backgroundColor: '#000' }} />
-    </div>
+  <div className="text-color-icon">
+    <span className="text-color-icon-letter">A</span>
+    <div className="text-color-icon-underline" />
   </div>
 );
 
 const BgColorIcon = () => (
-  <div className="relative w-5 h-5 flex items-center justify-center">
-    <span className="font-bold text-sm" style={{ color: '#000' }}>A</span>
-    <div className="absolute inset-0 -z-10 opacity-30" style={{ backgroundColor: '#ffeb3b' }} />
+  <div className="bg-color-icon">
+    <span className="bg-color-icon-letter">A</span>
+    <div className="bg-color-icon-bg" />
   </div>
 );
 
@@ -102,14 +99,9 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
       const data = await res.json();
       
       if (editorRef.current && data.content) {
-        // Parsear HTML completo y extraer SOLO el contenido del body
         const parser = new DOMParser();
         const doc = parser.parseFromString(data.content, 'text/html');
-        
-        // Obtener el innerHTML del body
         const bodyContent = doc.body.innerHTML.trim();
-        
-        // Insertar en el editor
         editorRef.current.innerHTML = bodyContent;
       }
       
@@ -122,16 +114,13 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
   };
 
   const saveTemplate = async () => {
-  if (!editorRef.current) return;
-  
-  try {
-    setLoading(true);
+    if (!editorRef.current) return;
     
-    // Obtener el contenido editado del body
-    const bodyContent = editorRef.current.innerHTML;
-    
-    // Reconstruir el HTML COMPLETO con estilos consistentes
-    const fullHtml = `<!DOCTYPE html>
+    try {
+      setLoading(true);
+      const bodyContent = editorRef.current.innerHTML;
+      
+      const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -192,23 +181,23 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
     ${bodyContent}
 </body>
 </html>`;
-    
-    const res = await fetch('/api/templates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: selectedTemplate, content: fullHtml }),
-    });
+      
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: selectedTemplate, content: fullHtml }),
+      });
 
-    if (res.ok) {
-      setToast({ show: true, message: 'Plantilla guardada exitosamente', type: 'success' });
-      setTimeout(() => onClose(), 1500);
+      if (res.ok) {
+        setToast({ show: true, message: 'Plantilla guardada exitosamente', type: 'success' });
+        setTimeout(() => onClose(), 1500);
+      }
+    } catch (error) {
+      setToast({ show: true, message: 'Error guardando plantilla', type: 'error' });
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    setToast({ show: true, message: 'Error guardando plantilla', type: 'error' });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -249,13 +238,10 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
   return (
     <div className="template-editor-modal">
       <div className="template-editor-container">
-        {/* Header */}
         <div className="template-editor-header">
           <div>
-            <h3 className="text-2xl font-serif font-semibold text-deep-stone">
-              Editar: {templateTitle}
-            </h3>
-            <p className="text-sm text-mineral-taupe mt-1">
+            <h3 className="template-editor-title">Editar: {templateTitle}</h3>
+            <p className="template-editor-subtitle">
               Personalizá el contenido del email • La firma se incluye automáticamente
             </p>
           </div>
@@ -264,10 +250,8 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
           </button>
         </div>
 
-        {/* Toolbar */}
         <div className="template-editor-toolbar">
           <div className="template-toolbar-group">
-            {/* Selector de fuente */}
             <select
               onChange={(e) => execCommand('fontName', e.target.value)}
               className="template-toolbar-select"
@@ -282,41 +266,27 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
 
             <div className="template-toolbar-divider" />
 
-            {/* Formato de texto */}
-            <button
-              onClick={() => execCommand('bold')}
-              className="template-toolbar-btn"
-              title="Negrita (Ctrl+B)"
-            >
+            <button onClick={() => execCommand('bold')} className="template-toolbar-btn" title="Negrita (Ctrl+B)">
               <Bold className="w-4 h-4" />
             </button>
             
-            <button
-              onClick={() => execCommand('italic')}
-              className="template-toolbar-btn"
-              title="Cursiva (Ctrl+I)"
-            >
+            <button onClick={() => execCommand('italic')} className="template-toolbar-btn" title="Cursiva (Ctrl+I)">
               <Italic className="w-4 h-4" />
             </button>
             
-            <button
-              onClick={() => execCommand('underline')}
-              className="template-toolbar-btn"
-              title="Subrayado (Ctrl+U)"
-            >
+            <button onClick={() => execCommand('underline')} className="template-toolbar-btn" title="Subrayado (Ctrl+U)">
               <Underline className="w-4 h-4" />
             </button>
 
             <div className="template-toolbar-divider" />
 
-            {/* Color de texto */}
             <div className="relative">
               <button
                 onClick={() => {
                   setShowTextColorPicker(!showTextColorPicker);
                   setShowBgColorPicker(false);
                 }}
-                className="template-toolbar-btn flex items-center gap-1"
+                className="template-toolbar-btn toolbar-btn-group"
                 title="Color de texto"
               >
                 <TextColorIcon />
@@ -341,14 +311,13 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               )}
             </div>
 
-            {/* Color de fondo */}
             <div className="relative">
               <button
                 onClick={() => {
                   setShowBgColorPicker(!showBgColorPicker);
                   setShowTextColorPicker(false);
                 }}
-                className="template-toolbar-btn flex items-center gap-1"
+                className="template-toolbar-btn toolbar-btn-group"
                 title="Color de fondo"
               >
                 <BgColorIcon />
@@ -375,64 +344,36 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
 
             <div className="template-toolbar-divider" />
 
-            {/* Alineación */}
-            <button
-              onClick={() => execCommand('justifyLeft')}
-              className="template-toolbar-btn"
-              title="Alinear izquierda"
-            >
+            <button onClick={() => execCommand('justifyLeft')} className="template-toolbar-btn" title="Alinear izquierda">
               <AlignLeft className="w-4 h-4" />
             </button>
             
-            <button
-              onClick={() => execCommand('justifyCenter')}
-              className="template-toolbar-btn"
-              title="Centrar"
-            >
+            <button onClick={() => execCommand('justifyCenter')} className="template-toolbar-btn" title="Centrar">
               <AlignCenter className="w-4 h-4" />
             </button>
 
-            <button
-              onClick={() => execCommand('justifyRight')}
-              className="template-toolbar-btn"
-              title="Alinear derecha"
-            >
+            <button onClick={() => execCommand('justifyRight')} className="template-toolbar-btn" title="Alinear derecha">
               <AlignRight className="w-4 h-4" />
             </button>
 
             <div className="template-toolbar-divider" />
 
-            {/* Listas */}
-            <button
-              onClick={() => execCommand('insertUnorderedList')}
-              className="template-toolbar-btn"
-              title="Lista con viñetas"
-            >
+            <button onClick={() => execCommand('insertUnorderedList')} className="template-toolbar-btn" title="Lista con viñetas">
               <List className="w-4 h-4" />
             </button>
 
-            <button
-              onClick={() => execCommand('insertOrderedList')}
-              className="template-toolbar-btn"
-              title="Lista numerada"
-            >
+            <button onClick={() => execCommand('insertOrderedList')} className="template-toolbar-btn" title="Lista numerada">
               <ListOrdered className="w-4 h-4" />
             </button>
 
             <div className="template-toolbar-divider" />
 
-            {/* Link */}
-            <button
-              onClick={insertLink}
-              className="template-toolbar-btn"
-              title="Insertar enlace"
-            >
+            <button onClick={insertLink} className="template-toolbar-btn" title="Insertar enlace">
               <LinkIcon className="w-4 h-4" />
             </button>
 
             <div className="template-toolbar-divider" />
 
-            {/* Tamaño */}
             <select
               onChange={(e) => execCommand('fontSize', e.target.value)}
               className="template-toolbar-select"
@@ -448,10 +389,8 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
           </div>
         </div>
 
-        {/* Editor */}
         <div className="template-editor-content">
           <div className="template-editor-paper">
-            {/* Contenido editable */}
             <div
               ref={editorRef}
               contentEditable
@@ -459,7 +398,6 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               className="template-editor-editable"
             />
             
-            {/* Firma (no editable) */}
             <div 
               className="template-editor-firma"
               dangerouslySetInnerHTML={{ __html: firmaHtml }}
@@ -467,7 +405,6 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
           </div>
         </div>
 
-        {/* Footer con variables y botones */}
         <div className="template-editor-footer">
           <div className="template-variables">
             💡 Variables: 
@@ -476,16 +413,12 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
             <code className="variable-tag">{'{mes_expensas}'}</code>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="template-editor-actions">
             <button onClick={handleClose} className="btn-cancel-modal">
               Cancelar
             </button>
             
-            <button
-              onClick={saveTemplate}
-              disabled={loading}
-              className="btn-send-consorcio"
-            >
+            <button onClick={saveTemplate} disabled={loading} className="btn-send-consorcio">
               <Save className="w-4 h-4" />
               {loading ? 'Guardando...' : 'Guardar cambios'}
             </button>

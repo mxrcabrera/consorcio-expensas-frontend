@@ -1,5 +1,6 @@
 """
 Wrapper CLI para el sistema de expensas
+
 """
 import sys
 import argparse

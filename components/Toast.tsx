@@ -23,21 +23,9 @@ export default function Toast({ show, message, type, onClose }: ToastProps) {
   if (!show) return null;
 
   return (
-    <div className="fixed top-6 right-6 z-100 animate-slide-in">
-      <div className={`
-        flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border-2
-        ${type === 'success' 
-          ? 'bg-white border-gold-vein' 
-          : 'bg-white border-red-400'
-        }
-      `}>
-        <div className={`
-          w-10 h-10 rounded-full flex items-center justify-center shrink-0
-          ${type === 'success' 
-            ? 'bg-gold-vein' 
-            : 'bg-red-500'
-          }
-        `}>
+    <div className="toast-container">
+      <div className={`toast-card ${type === 'success' ? 'toast-card-success' : 'toast-card-error'}`}>
+        <div className={`toast-icon ${type === 'success' ? 'toast-icon-success' : 'toast-icon-error'}`}>
           {type === 'success' ? (
             <Check className="w-5 h-5 text-white" />
           ) : (
@@ -45,12 +33,9 @@ export default function Toast({ show, message, type, onClose }: ToastProps) {
           )}
         </div>
         
-        <p className="font-medium text-deep-stone pr-4">{message}</p>
+        <p className="toast-message">{message}</p>
         
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-stone-gray rounded transition-colors"
-        >
+        <button onClick={onClose} className="toast-close-btn">
           <X className="w-4 h-4 text-mineral-taupe" />
         </button>
       </div>

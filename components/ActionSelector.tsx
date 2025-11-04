@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { FileText, Zap, Bell, Check } from 'lucide-react';
 import { ActionType, ActionConfig } from '@/types';
 
@@ -36,14 +35,14 @@ const ACTIONS: ActionConfig[] = [
 export default function ActionSelector({ selectedAction, onSelect }: ActionSelectorProps) {
   return (
     <div className="config-section">
-      <h3 className="config-label">Tipo de Acción</h3>
-      <div className="grid md:grid-cols-3 gap-5">
+      <div className="config-label">1. ¿Qué querés enviar?</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {ACTIONS.map((action) => {
           const Icon = action.icon;
           const isSelected = selectedAction === action.id;
 
           return (
-            <div
+            <button
               key={action.id}
               onClick={() => onSelect(action.id)}
               className={`action-option ${isSelected ? 'action-option-selected' : ''}`}
@@ -54,8 +53,8 @@ export default function ActionSelector({ selectedAction, onSelect }: ActionSelec
                 </div>
               )}
 
-              <div className="flex items-center gap-3">
-                <Icon className={`w-6 h-6 ${isSelected ? 'text-gold-vein' : 'text-mineral-taupe'}`} />
+              <div className="action-header">
+                <Icon className="action-icon" />
                 <span className={`action-code ${isSelected ? 'action-code-selected' : 'action-code-default'}`}>
                   {action.code}
                 </span>
@@ -65,7 +64,7 @@ export default function ActionSelector({ selectedAction, onSelect }: ActionSelec
                 <h4 className="action-label">{action.title}</h4>
                 <p className="action-desc">{action.description}</p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Calendar } from 'lucide-react';
 
 interface CorteLuzConfigProps {
@@ -11,12 +10,12 @@ interface CorteLuzConfigProps {
 export default function CorteLuzConfig({ diasCorte, onChange }: CorteLuzConfigProps) {
   return (
     <div className="config-section">
-      <h3 className="config-label">Configuración del Corte</h3>
+      <div className="config-label">Configuración del Corte</div>
 
       <div className="consorcio-card">
-        <div className="flex items-center gap-3 mb-4">
-          <Calendar className="w-5 h-5 text-mineral-taupe" />
-          <label className="text-base font-semibold text-deep-stone">
+        <div className="form-label-group">
+          <Calendar className="form-icon" />
+          <label className="form-label">
             Días hasta el corte programado
           </label>
         </div>
@@ -27,10 +26,10 @@ export default function CorteLuzConfig({ diasCorte, onChange }: CorteLuzConfigPr
           max="30"
           value={diasCorte}
           onChange={(e) => onChange(parseInt(e.target.value) || 5)}
-          className="w-full px-4 py-3 rounded-xl border-2 border-mineral-taupe/20 
-                   focus:border-gold-vein focus:outline-none transition-colors"
+          className="input-number"
         />
-        <p className="text-xs text-mineral-taupe mt-2 italic">
+        
+        <p className="form-hint">
           El sistema calculará la fecha automáticamente
         </p>
       </div>

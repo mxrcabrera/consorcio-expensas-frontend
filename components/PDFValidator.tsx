@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Badge } from './Badge';
 
 interface PDFValidatorProps {
@@ -52,75 +52,60 @@ export default function PDFValidator({ show, pdfFolder, unidades, onClose }: PDF
   const incompletos = validation.length - completos;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-mineral-taupe/10">
+    <div className="excel-modal-overlay">
+      <div className="excel-modal-container">
+        <div className="excel-modal-header">
           <div>
-            <h3 className="text-2xl font-serif font-semibold text-deep-stone">
-              Validación de PDFs
-            </h3>
-            <p className="text-sm text-mineral-taupe mt-1">
+            <h3 className="excel-modal-title">Validación de PDFs</h3>
+            <p className="excel-modal-subtitle">
               {completos} completos • {incompletos} incompletos
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-stone-gray rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="template-toolbar-btn">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="p-6 bg-stone-gray/20">
-          <div className="flex items-center gap-3">
-            <Badge variant="success">
-              ✓ {completos} completos
-            </Badge>
-            <Badge variant="error">
-              ✗ {incompletos} incompletos
-            </Badge>
-          </div>
+        <div className="pdf-validator-summary">
+          <Badge variant="success">✓ {completos} completos</Badge>
+          <Badge variant="error">✗ {incompletos} incompletos</Badge>
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="pdf-validator-list">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-mineral-taupe">Validando PDFs...</p>
+            <div className="loading-state">
+              <p className="loading-text">Validando PDFs...</p>
             </div>
           ) : (
-            <div className="p-6 space-y-3">
-              {validation.map((item) => (
-                <div
-                  key={item.unidad}
-                  className={`p-4 rounded-xl border-2 ${
-                    item.completo
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-red-200 bg-red-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {item.completo ? (
-                        <CheckCircle className="w-6 h-6 text-green-600" />
-                      ) : (
-                        <AlertTriangle className="w-6 h-6 text-red-600" />
-                      )}
-                      <span className="font-semibold text-deep-stone">
-                        Unidad {item.unidad}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={item.expensas ? 'success' : 'error'} className="text-xs font-mono">
-                        {item.expensas ? '✓' : '✗'} Expensas {item.unidad}.pdf
-                      </Badge>
-                      <Badge variant={item.detalle ? 'success' : 'error'} className="text-xs font-mono">
-                        {item.detalle ? '✓' : '✗'} Detalle {item.unidad}.pdf
-                      </Badge>
-                    </div>
+            validation.map((item) => (
+              <div
+                key={item.unidad}
+                className={`pdf-validator-item ${
+                  item.completo ? 'pdf-validator-item-success' : 'pdf-validator-item-error'
+                }`}
+              >
+                <div className="pdf-validator-item-header">
+                  <div className="pdf-validator-item-title">
+                    {item.completo ? (
+                      <CheckCircle className="pdf-validator-icon-success" />
+                    ) : (
+                      <AlertTriangle className="pdf-validator-icon-error" />
+                    )}
+                    <span className="pdf-validator-unit-label">
+                      Unidad {item.unidad}
+                    </span>
+                  </div>
+                  <div className="pdf-validator-item-badges">
+                    <Badge variant={item.expensas ? 'success' : 'error'}>
+                      {item.expensas ? '✓' : '✗'} Expensas {item.unidad}.pdf
+                    </Badge>
+                    <Badge variant={item.detalle ? 'success' : 'error'}>
+                      {item.detalle ? '✓' : '✗'} Detalle {item.unidad}.pdf
+                    </Badge>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
           )}
         </div>
       </div>

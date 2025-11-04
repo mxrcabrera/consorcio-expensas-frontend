@@ -1,6 +1,7 @@
 """
-Sistema de Envío Automático de Expensas - Refactorizado
+Sistema de Envío Automático de Expensas
 Octubre 2025
+
 """
 import sys
 # Forzar flush automático
@@ -168,7 +169,6 @@ def procesar_email_cc(email_cc):
 def crear_email(destinatario, asunto, cuerpo_html, archivos_adjuntos=None, cc=None):
     """Crea mensaje de email con formato HTML y adjuntos"""
     mensaje = MIMEMultipart()
-    # Formato RFC 5322 estándar para mostrar nombre y email
     mensaje['From'] = f'"Consorcio Constitucion 2226" <{Config.EMAIL_REMITENTE}>'
     mensaje['to'] = destinatario
     mensaje['subject'] = asunto

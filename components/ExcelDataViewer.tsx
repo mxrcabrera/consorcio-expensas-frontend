@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Upload, FileSpreadsheet, Check } from 'lucide-react';
+import { X, Search, Upload, FileSpreadsheet } from 'lucide-react';
 
 interface ExcelDataViewerProps {
   show: boolean;
@@ -10,14 +10,12 @@ interface ExcelDataViewerProps {
   onFileSelect: (file: File) => void;
 }
 
-// Función para detectar si una columna es de email
 const isEmailColumn = (columnName: string): boolean => {
   const emailKeywords = ['email', 'mail', 'correo', 'e-mail', 'e_mail'];
   const normalized = columnName.toLowerCase().trim();
   return emailKeywords.some(keyword => normalized.includes(keyword));
 };
 
-// Función para detectar valores vacíos o que indican "sin dato"
 const isEmpty = (val: any): boolean => {
   if (val === null || val === undefined) return true;
   if (typeof val === 'string') {
@@ -29,7 +27,6 @@ const isEmpty = (val: any): boolean => {
   return false;
 };
 
-// Función para ordenar columnas: DEPTO primero, luego N, resto en orden original
 const sortColumns = (columns: string[]): string[] => {
   const deptoCol = columns.find(col => 
     ['depto', 'dpto', 'departamento', 'unidad', 'uf'].includes(col.toLowerCase().trim())
@@ -128,12 +125,8 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
         <div className="excel-modal-container" style={{ maxWidth: '42rem' }}>
           <div className="excel-modal-header">
             <div>
-              <h3 className="text-2xl font-serif font-semibold text-deep-stone">
-                Datos Maestros
-              </h3>
-              <p className="text-sm text-mineral-taupe mt-1">
-                Archivo Excel con destinatarios
-              </p>
+              <h3 className="excel-modal-title">Datos Maestros</h3>
+              <p className="excel-modal-subtitle">Archivo Excel con destinatarios</p>
             </div>
             <button onClick={onClose} className="template-toolbar-btn">
               <X className="w-6 h-6" />
@@ -147,10 +140,7 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
             onChange={handleFileChange}
           />
 
-          <div
-            onClick={handleUploadClick}
-            className="excel-dropzone"
-          >
+          <div onClick={handleUploadClick} className="excel-dropzone">
             <div className="excel-dropzone-icon">
               <Upload className="w-8 h-8" />
             </div>
@@ -179,14 +169,12 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
       <div className="excel-modal-container">
         <div className="excel-modal-header">
           <div>
-            <h3 className="text-2xl font-serif font-semibold text-deep-stone">
-              Datos Maestros
-            </h3>
-            <p className="text-sm text-mineral-taupe mt-1">
+            <h3 className="excel-modal-title">Datos Maestros</h3>
+            <p className="excel-modal-subtitle">
               {file.name} • {filteredData.length} registros
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="excel-modal-header-actions">
             <button onClick={handleUploadClick} className="btn-secondary-consorcio">
               Cambiar archivo
             </button>
@@ -196,24 +184,23 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
           </div>
         </div>
 
-        <div className="p-6 border-b border-mineral-taupe/10 bg-white">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-mineral-taupe" />
+        <div className="search-bar-container">
+          <div className="search-input-wrapper">
+            <Search className="search-input-icon" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar..."
-              className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-mineral-taupe/20 
-                        focus:border-gold-vein focus:outline-none transition-all"
+              className="search-input"
             />
           </div>
         </div>
 
         <div className="excel-table-wrapper">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-mineral-taupe">Cargando...</p>
+            <div className="loading-state">
+              <p className="loading-text">Cargando...</p>
             </div>
           ) : (
             <table className="datos-maestros-table">

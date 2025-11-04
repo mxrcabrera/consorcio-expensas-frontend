@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Send } from 'lucide-react';
 
 interface SendButtonProps {
