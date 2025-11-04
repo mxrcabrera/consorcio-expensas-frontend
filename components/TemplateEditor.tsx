@@ -247,10 +247,10 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
     'Plantilla de Email';
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+    <div className="template-editor-modal">
+      <div className="template-editor-container">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-mineral-taupe/10">
+        <div className="template-editor-header">
           <div>
             <h3 className="text-2xl font-serif font-semibold text-deep-stone">
               Editar: {templateTitle}
@@ -259,21 +259,18 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               Personalizá el contenido del email • La firma se incluye automáticamente
             </p>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-stone-gray rounded-lg transition-colors"
-          >
+          <button onClick={handleClose} className="template-toolbar-btn">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Toolbar estilo Gmail */}
-        <div className="px-6 py-3 border-b border-mineral-taupe/10">
-          <div className="flex items-center gap-1 flex-wrap">
+        {/* Toolbar */}
+        <div className="template-editor-toolbar">
+          <div className="template-toolbar-group">
             {/* Selector de fuente */}
             <select
               onChange={(e) => execCommand('fontName', e.target.value)}
-              className="px-3 py-1 rounded border border-mineral-taupe/20 text-sm hover:bg-stone-gray transition-colors"
+              className="template-toolbar-select"
               defaultValue="Trebuchet MS"
             >
               {FONTS.map(font => (
@@ -283,12 +280,12 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               ))}
             </select>
 
-            <div className="w-px h-6 bg-mineral-taupe/20 mx-1" />
+            <div className="template-toolbar-divider" />
 
             {/* Formato de texto */}
             <button
               onClick={() => execCommand('bold')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Negrita (Ctrl+B)"
             >
               <Bold className="w-4 h-4" />
@@ -296,7 +293,7 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
             
             <button
               onClick={() => execCommand('italic')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Cursiva (Ctrl+I)"
             >
               <Italic className="w-4 h-4" />
@@ -304,13 +301,13 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
             
             <button
               onClick={() => execCommand('underline')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Subrayado (Ctrl+U)"
             >
               <Underline className="w-4 h-4" />
             </button>
 
-            <div className="w-px h-6 bg-mineral-taupe/20 mx-1" />
+            <div className="template-toolbar-divider" />
 
             {/* Color de texto */}
             <div className="relative">
@@ -319,7 +316,7 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
                   setShowTextColorPicker(!showTextColorPicker);
                   setShowBgColorPicker(false);
                 }}
-                className="p-2 rounded hover:bg-stone-gray transition-colors flex items-center gap-1"
+                className="template-toolbar-btn flex items-center gap-1"
                 title="Color de texto"
               >
                 <TextColorIcon />
@@ -327,14 +324,14 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               </button>
               
               {showTextColorPicker && (
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl border border-mineral-taupe/20 p-3 z-50" style={{ width: '240px' }}>
-                  <div className="text-xs font-semibold mb-2 text-deep-stone">Color de texto</div>
-                  <div className="grid grid-cols-10 gap-1">
+                <div className="color-picker-dropdown">
+                  <div className="color-picker-title">Color de texto</div>
+                  <div className="color-picker-grid">
                     {COLORS.flat().map((color, idx) => (
                       <button
                         key={idx}
                         onClick={() => applyColor(color, false)}
-                        className="w-5 h-5 rounded hover:ring-2 hover:ring-gold-vein transition-all"
+                        className="color-picker-swatch"
                         style={{ backgroundColor: color }}
                         title={color}
                       />
@@ -351,7 +348,7 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
                   setShowBgColorPicker(!showBgColorPicker);
                   setShowTextColorPicker(false);
                 }}
-                className="p-2 rounded hover:bg-stone-gray transition-colors flex items-center gap-1"
+                className="template-toolbar-btn flex items-center gap-1"
                 title="Color de fondo"
               >
                 <BgColorIcon />
@@ -359,14 +356,14 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               </button>
               
               {showBgColorPicker && (
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl border border-mineral-taupe/20 p-3 z-50" style={{ width: '240px' }}>
-                  <div className="text-xs font-semibold mb-2 text-deep-stone">Color de fondo</div>
-                  <div className="grid grid-cols-10 gap-1">
+                <div className="color-picker-dropdown">
+                  <div className="color-picker-title">Color de fondo</div>
+                  <div className="color-picker-grid">
                     {COLORS.flat().map((color, idx) => (
                       <button
                         key={idx}
                         onClick={() => applyColor(color, true)}
-                        className="w-5 h-5 rounded hover:ring-2 hover:ring-gold-vein transition-all"
+                        className="color-picker-swatch"
                         style={{ backgroundColor: color }}
                         title={color}
                       />
@@ -376,12 +373,12 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               )}
             </div>
 
-            <div className="w-px h-6 bg-mineral-taupe/20 mx-1" />
+            <div className="template-toolbar-divider" />
 
             {/* Alineación */}
             <button
               onClick={() => execCommand('justifyLeft')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Alinear izquierda"
             >
               <AlignLeft className="w-4 h-4" />
@@ -389,7 +386,7 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
             
             <button
               onClick={() => execCommand('justifyCenter')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Centrar"
             >
               <AlignCenter className="w-4 h-4" />
@@ -397,18 +394,18 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
 
             <button
               onClick={() => execCommand('justifyRight')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Alinear derecha"
             >
               <AlignRight className="w-4 h-4" />
             </button>
 
-            <div className="w-px h-6 bg-mineral-taupe/20 mx-1" />
+            <div className="template-toolbar-divider" />
 
             {/* Listas */}
             <button
               onClick={() => execCommand('insertUnorderedList')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Lista con viñetas"
             >
               <List className="w-4 h-4" />
@@ -416,29 +413,29 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
 
             <button
               onClick={() => execCommand('insertOrderedList')}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Lista numerada"
             >
               <ListOrdered className="w-4 h-4" />
             </button>
 
-            <div className="w-px h-6 bg-mineral-taupe/20 mx-1" />
+            <div className="template-toolbar-divider" />
 
             {/* Link */}
             <button
               onClick={insertLink}
-              className="p-2 rounded hover:bg-stone-gray transition-colors"
+              className="template-toolbar-btn"
               title="Insertar enlace"
             >
               <LinkIcon className="w-4 h-4" />
             </button>
 
-            <div className="w-px h-6 bg-mineral-taupe/20 mx-1" />
+            <div className="template-toolbar-divider" />
 
             {/* Tamaño */}
             <select
               onChange={(e) => execCommand('fontSize', e.target.value)}
-              className="px-3 py-1 rounded border border-mineral-taupe/20 text-sm hover:bg-stone-gray transition-colors"
+              className="template-toolbar-select"
               defaultValue="3"
             >
               <option value="1">Muy pequeño</option>
@@ -452,57 +449,46 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
         </div>
 
         {/* Editor */}
-        <div className="flex-1 overflow-auto p-6 bg-stone-gray/10">
-          <div className="bg-white rounded-lg shadow-sm border border-mineral-taupe/10 overflow-hidden">
+        <div className="template-editor-content">
+          <div className="template-editor-paper">
             {/* Contenido editable */}
             <div
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              className="p-8 focus:outline-none min-h-[400px]"
+              className="template-editor-editable"
             />
             
             {/* Firma (no editable) */}
             <div 
-              className="p-8 pt-4 border-t border-mineral-taupe/10 bg-stone-gray/5"
+              className="template-editor-firma"
               dangerouslySetInnerHTML={{ __html: firmaHtml }}
             />
           </div>
         </div>
 
         {/* Footer con variables y botones */}
-        <div className="px-6 py-4 bg-white border-t border-mineral-taupe/10">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-mineral-taupe">
-              💡 Variables: <code className="px-2 py-1 bg-stone-gray/50 rounded text-xs mx-1">{'{nombre}'}</code> 
-              <code className="px-2 py-1 bg-stone-gray/50 rounded text-xs mx-1">{'{depto}'}</code> 
-              <code className="px-2 py-1 bg-stone-gray/50 rounded text-xs mx-1">{'{mes_expensas}'}</code> 
-              <code className="px-2 py-1 bg-stone-gray/50 rounded text-xs mx-1">{'{fecha_corte}'}</code>
-            </p>
+        <div className="template-editor-footer">
+          <div className="template-variables">
+            💡 Variables: 
+            <code className="variable-tag">{'{nombre}'}</code> 
+            <code className="variable-tag">{'{depto}'}</code> 
+            <code className="variable-tag">{'{mes_expensas}'}</code>
+          </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleClose}
-                className="px-6 py-2 rounded-lg border-2 border-mineral-taupe/30 hover:bg-stone-gray transition-colors text-sm font-medium text-deep-stone"
-              >
-                Cancelar
-              </button>
-              
-              <button
-                onClick={saveTemplate}
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-2 rounded-lg transition-colors disabled:opacity-50 text-sm font-semibold shadow-md"
-                style={{
-                  backgroundColor: '#C9B28E',
-                  color: '#FFFFFF'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B89A6A'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#C9B28E'}
-              >
-                <Save className="w-4 h-4" />
-                {loading ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </div>
+          <div className="flex items-center gap-3">
+            <button onClick={handleClose} className="btn-cancel-modal">
+              Cancelar
+            </button>
+            
+            <button
+              onClick={saveTemplate}
+              disabled={loading}
+              className="btn-send-consorcio"
+            >
+              <Save className="w-4 h-4" />
+              {loading ? 'Guardando...' : 'Guardar cambios'}
+            </button>
           </div>
         </div>
       </div>

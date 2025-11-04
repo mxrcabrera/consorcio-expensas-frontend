@@ -26,20 +26,7 @@ export default function Header({ onOpenExcel }: HeaderProps) {
         {/* Botón Gestionar Excel */}
         <button
           onClick={onOpenExcel}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 border-2 text-sm font-medium"
-          style={{
-            borderColor: '#C9B28E',
-            color: '#C9B28E',
-            backgroundColor: 'transparent'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#C9B28E';
-            e.currentTarget.style.color = '#FFFFFF';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#C9B28E';
-          }}
+          className="btn-secondary-consorcio"
         >
           <FileSpreadsheet className="w-4 h-4" />
           Gestionar Excel

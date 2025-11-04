@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Upload, FileSpreadsheet } from 'lucide-react';
+import { X, Search, Upload, FileSpreadsheet, Check } from 'lucide-react';
 
 interface ExcelDataViewerProps {
   show: boolean;
@@ -23,7 +23,6 @@ const isEmpty = (val: any): boolean => {
   if (typeof val === 'string') {
     const normalized = val.trim().toUpperCase();
     if (normalized === '') return true;
-    // Detectar variaciones de "sin dato"
     const emptyIndicators = ['N/A', 'NA', 'N.A.', 'N.A', 'NONE', 'NULL', '-', '--', '---', 'SIN DATO', 'NO DISPONIBLE', 'NO APLICA'];
     return emptyIndicators.includes(normalized);
   }
@@ -40,14 +39,8 @@ const sortColumns = (columns: string[]): string[] => {
   );
   
   const result: string[] = [];
-  
-  // 1. Si existe DEPTO, va primero
   if (deptoCol) result.push(deptoCol);
-  
-  // 2. Si existe N/ID, va segundo
   if (nCol) result.push(nCol);
-  
-  // 3. El resto en orden original
   columns.forEach(col => {
     if (col !== deptoCol && col !== nCol) {
       result.push(col);
@@ -102,7 +95,6 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
         setData(result.data);
         setFilteredData(result.data);
         
-        // Ordenar columnas automáticamente
         if (result.data.length > 0) {
           const columns = Object.keys(result.data[0]);
           const sorted = sortColumns(columns);
@@ -132,9 +124,9 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
   // VISTA: No hay archivo cargado
   if (!file) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between p-6 border-b border-mineral-taupe/10">
+      <div className="excel-modal-overlay">
+        <div className="excel-modal-container" style={{ maxWidth: '42rem' }}>
+          <div className="excel-modal-header">
             <div>
               <h3 className="text-2xl font-serif font-semibold text-deep-stone">
                 Datos Maestros
@@ -143,41 +135,37 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
                 Archivo Excel con destinatarios
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-stone-gray rounded-lg transition-colors"
-            >
+            <button onClick={onClose} className="template-toolbar-btn">
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="p-8">
-            <input
-              ref={inputRef}
-              type="file"
-              className="hidden"
-              onChange={handleFileChange}
-            />
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
-            <div
-              onClick={handleUploadClick}
-              className="border-2 border-dashed border-mineral-taupe/30 rounded-2xl p-12
-                       hover:border-gold-vein/50 transition-colors cursor-pointer
-                       flex flex-col items-center justify-center gap-4 text-center"
-            >
-              <Upload className="w-16 h-16 text-mineral-taupe" />
-              <div>
-                <p className="text-lg font-semibold text-deep-stone">
-                  Arrastrá o hacé click para subir
-                </p>
-                <p className="text-sm text-mineral-taupe mt-2">
-                  Este archivo se usará para todos los tipos de envío
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-mineral-taupe">
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Cualquier formato de archivo</span>
-              </div>
+          <div
+            onClick={handleUploadClick}
+            className="excel-dropzone"
+          >
+            <div className="excel-dropzone-icon">
+              <Upload className="w-8 h-8" />
+            </div>
+            
+            <h4 className="excel-dropzone-title">
+              Arrastrá o hacé click para subir
+            </h4>
+            
+            <p className="excel-dropzone-subtitle">
+              Este archivo se usará para todos los tipos de envío
+            </p>
+            
+            <div className="excel-dropzone-hint">
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Cualquier formato de archivo</span>
             </div>
           </div>
         </div>
@@ -187,9 +175,9 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
 
   // VISTA: Archivo cargado - mostrar datos
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-mineral-taupe/10">
+    <div className="excel-modal-overlay">
+      <div className="excel-modal-container">
+        <div className="excel-modal-header">
           <div>
             <h3 className="text-2xl font-serif font-semibold text-deep-stone">
               Datos Maestros
@@ -199,22 +187,16 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleUploadClick}
-              className="px-4 py-2 rounded-lg border-2 border-mineral-taupe/20 hover:border-gold-vein hover:bg-gold-vein/5 transition-all text-sm font-medium"
-            >
+            <button onClick={handleUploadClick} className="btn-secondary-consorcio">
               Cambiar archivo
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-stone-gray rounded-lg transition-colors"
-            >
+            <button onClick={onClose} className="template-toolbar-btn">
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 border-b border-mineral-taupe/10">
+        <div className="p-6 border-b border-mineral-taupe/10 bg-white">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-mineral-taupe" />
             <input
@@ -223,12 +205,12 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar..."
               className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-mineral-taupe/20 
-                       focus:border-gold-vein focus:outline-none"
+                        focus:border-gold-vein focus:outline-none transition-all"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="excel-table-wrapper">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-mineral-taupe">Cargando...</p>
@@ -238,9 +220,7 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
               <thead>
                 <tr>
                   {sortedColumns.map((key) => (
-                    <th key={key}>
-                      {key}
-                    </th>
+                    <th key={key}>{key}</th>
                   ))}
                 </tr>
               </thead>

@@ -10,6 +10,7 @@ import ExcelDataViewer from '@/components/ExcelDataViewer';
 import { ConfigState, ActionType, SendResult } from '@/types';
 import Toast from '@/components/Toast';
 import { Badge } from '@/components/Badge';
+import { Edit } from 'lucide-react';
 
 // Componente para preview del template
 function TemplatePreview({ action, refreshKey }: { action: ActionType | null; refreshKey: number }) {
@@ -283,7 +284,7 @@ export default function Home() {
       <div className="tagline-section">
         <div className="max-w-7xl mx-auto px-6">
           <p className="text-center text-sm text-mineral-taupe italic">
-            Simple, rápido y efectivo
+            Gestión de comunicaciones del consorcio
           </p>
         </div>
       </div>
@@ -336,30 +337,26 @@ export default function Home() {
         {/* MENSAJE: Cargar Excel primero */}
         {config.action && !config.dataFile && (
           <section className="config-section">
-            <div className="consorcio-card text-center py-12">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{
-                background: 'linear-gradient(135deg, var(--gold-vein), var(--gold-accent))'
-              }}>
-                <FileSpreadsheet className="w-8 h-8 text-white" />
+            <div className="consorcio-card">
+              <div className="empty-state-container">
+                <div className="empty-state-icon">
+                  <FileSpreadsheet className="w-10 h-10" />
+                </div>
+                <h3 className="empty-state-title">
+                  Primero cargá los datos
+                </h3>
+                <p className="empty-state-description">
+                  Necesitás un archivo Excel con los destinatarios.<br />
+                  Hacé click abajo o en "Gestionar Excel" arriba.
+                </p>
+                <button
+                  onClick={() => setShowExcelViewer(true)}
+                  className="btn-send-consorcio"
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  Cargar datos maestros
+                </button>
               </div>
-              <h3 className="text-xl font-serif font-semibold text-deep-stone mb-2">
-                Primero cargá los datos
-              </h3>
-              <p className="text-sm text-mineral-taupe mb-4">
-                Hacé click en "Gestionar Excel" arriba para cargar el archivo con los destinatarios
-              </p>
-              <button
-                onClick={() => setShowExcelViewer(true)}
-                className="px-6 py-3 rounded-lg transition-colors font-medium"
-                style={{
-                  backgroundColor: '#C9B28E',
-                  color: '#FFFFFF'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B89A6A'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#C9B28E'}
-              >
-                Cargar datos maestros
-              </button>
             </div>
           </section>
         )}
@@ -373,59 +370,61 @@ export default function Home() {
                   2. Archivos PDF
                 </div>
                 
-                <label className="consorcio-card cursor-pointer hover:border-gold-vein transition-all block">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        const files = Array.from(e.target.files);
-                        setPdfFiles(files);
-                      }
-                    }}
-                  />
-                  
-                  <div className="text-center py-12">
-                    {pdfFiles.length > 0 ? (
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, var(--gold-vein), var(--gold-accent))'
-                        }}>
-                          <Check className="w-8 h-8 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-deep-stone">
-                            {pdfFiles.length} archivos PDF cargados
-                          </p>
-                          <p className="text-sm text-gold-vein mt-1">
-                            ✓ Listos para enviar
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setPdfFiles([]);
-                          }}
-                          className="text-sm text-mineral-taupe hover:text-deep-stone mt-2"
-                        >
-                          Cambiar archivos
-                        </button>
+                {pdfFiles.length > 0 ? (
+                  <div className="consorcio-card">
+                    <div className="pdf-loaded">
+                      <div className="pdf-loaded-icon">
+                        <Check className="w-8 h-8 text-white" />
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3">
-                        <Upload className="w-12 h-12 text-mineral-taupe" />
-                        <div>
-                          <p className="font-semibold text-deep-stone">Arrastrá los PDFs acá</p>
-                          <p className="text-sm text-mineral-taupe mt-1">o hacé click para buscar</p>
-                          <p className="text-xs text-mineral-taupe mt-2">Podés seleccionar múltiples archivos</p>
-                        </div>
-                      </div>
-                    )}
+                      <p className="font-semibold text-deep-stone text-lg mb-1">
+                        {pdfFiles.length} archivos PDF cargados
+                      </p>
+                      <p className="text-sm text-gold-vein mb-3">
+                        ✓ Listos para enviar
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPdfFiles([]);
+                        }}
+                        className="btn-text-consorcio"
+                      >
+                        Cambiar archivos
+                      </button>
+                    </div>
                   </div>
-                </label>
+                ) : (
+                  <label className="consorcio-card block">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const files = Array.from(e.target.files);
+                          setPdfFiles(files);
+                        }
+                      }}
+                    />
+                    
+                    <div className="pdf-dropzone">
+                      <div className="pdf-dropzone-icon">
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <h4 className="pdf-dropzone-title">
+                        Arrastrá los PDFs acá
+                      </h4>
+                      <p className="pdf-dropzone-subtitle">
+                        o hacé click para buscar
+                      </p>
+                      <p className="pdf-dropzone-hint">
+                        Podés seleccionar múltiples archivos
+                      </p>
+                    </div>
+                  </label>
+                )}
               </section>
             )}
 
@@ -436,60 +435,62 @@ export default function Home() {
                   2. Archivos adjuntos (opcional)
                 </div>
                 
-                <label className="consorcio-card cursor-pointer hover:border-gold-vein transition-all block">
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        const files = Array.from(e.target.files);
-                        setAttachmentFiles(files);
-                      }
-                    }}
-                  />
-                  
-                  <div className="text-center py-12">
-                    {attachmentFiles.length > 0 ? (
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, var(--gold-vein), var(--gold-accent))'
-                        }}>
-                          <Check className="w-8 h-8 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-deep-stone">
-                            {attachmentFiles.length} archivo{attachmentFiles.length !== 1 ? 's' : ''} cargado{attachmentFiles.length !== 1 ? 's' : ''}
-                          </p>
-                          <div className="text-xs text-mineral-taupe mt-2 max-w-md mx-auto">
-                            {attachmentFiles.map((file, idx) => (
-                              <div key={idx} className="truncate">• {file.name}</div>
-                            ))}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setAttachmentFiles([]);
-                          }}
-                          className="text-sm text-mineral-taupe hover:text-deep-stone mt-2"
-                        >
-                          Cambiar archivos
-                        </button>
+                {attachmentFiles.length > 0 ? (
+                  <div className="consorcio-card">
+                    <div className="pdf-loaded">
+                      <div className="pdf-loaded-icon">
+                        <Check className="w-8 h-8 text-white" />
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3">
-                        <Upload className="w-12 h-12 text-mineral-taupe" />
-                        <div>
-                          <p className="font-semibold text-deep-stone">Arrastrá archivos acá</p>
-                          <p className="text-sm text-mineral-taupe mt-1">o hacé click para buscar</p>
-                          <p className="text-xs text-mineral-taupe mt-2">Cualquier tipo de archivo • Podés seleccionar múltiples</p>
-                        </div>
+                      <p className="font-semibold text-deep-stone text-lg mb-1">
+                        {attachmentFiles.length} archivo{attachmentFiles.length !== 1 ? 's' : ''} cargado{attachmentFiles.length !== 1 ? 's' : ''}
+                      </p>
+                      <div className="text-sm text-mineral-taupe mt-2 mb-3 max-w-md mx-auto">
+                        {attachmentFiles.map((file, idx) => (
+                          <div key={idx} className="truncate">• {file.name}</div>
+                        ))}
                       </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setAttachmentFiles([]);
+                        }}
+                        className="btn-text-consorcio"
+                      >
+                        Cambiar archivos
+                      </button>
+                    </div>
                   </div>
-                </label>
+                ) : (
+                  <label className="consorcio-card block">
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const files = Array.from(e.target.files);
+                          setAttachmentFiles(files);
+                        }
+                      }}
+                    />
+                    
+                    <div className="pdf-dropzone">
+                      <div className="pdf-dropzone-icon">
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <h4 className="pdf-dropzone-title">
+                        Arrastrá archivos acá
+                      </h4>
+                      <p className="pdf-dropzone-subtitle">
+                        o hacé click para buscar
+                      </p>
+                      <p className="pdf-dropzone-hint">
+                        Cualquier tipo de archivo • Podés seleccionar múltiples
+                      </p>
+                    </div>
+                  </label>
+                )}
               </section>
             )}
 
@@ -571,22 +572,25 @@ export default function Home() {
                         value={config.subject || ''}
                         onChange={(e) => setConfig({ ...config, subject: e.target.value })}
                         placeholder="Ej: Comunicado importante del consorcio"
-                        className="w-full px-4 py-3 rounded-lg border-2 border-mineral-taupe/20 focus:border-gold-vein focus:outline-none text-deep-stone"
+                        className="email-subject-input"
                       />
                     ) : (
                       <>
-                        <div className="px-4 py-3 rounded-lg bg-stone-gray/30 border-2 border-mineral-taupe/10 text-deep-stone text-sm">
+                        <div className="email-subject-display">
                           {config.action === 'expensas' && (
-                            <span>COMUNICACIONES - Liquidación de Expensas <code className="px-2 py-1 bg-white rounded text-xs mx-1">{'{mes_expensas}'}</code> - DEPTO <code className="px-2 py-1 bg-white rounded text-xs mx-1">{'{depto}'}</code></span>
+                            <span>
+                              COMUNICACIONES - Liquidación de Expensas{' '}
+                              <code className="variable-tag">{'{mes_expensas}'}</code> - DEPTO{' '}
+                              <code className="variable-tag">{'{depto}'}</code>
+                            </span>
                           )}
                           {config.action === 'corte_luz' && (
                             <span>AVISO FORMAL - Corte de suministro eléctrico programado</span>
                           )}
                         </div>
-                        <p className="text-xs text-mineral-taupe mt-2 flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-xs">ℹ️</span>
-                          Este asunto se genera automáticamente
-                        </p>
+                        <div className="email-subject-hint">
+                          ℹ️ Este asunto se genera automáticamente
+                        </div>
                       </>
                     )}
                   </div>
@@ -599,21 +603,22 @@ export default function Home() {
                       </label>
                       <button
                         onClick={() => setShowTemplateEditor(true)}
-                        className="text-sm text-gold-vein hover:text-gold-accent transition-colors font-medium flex items-center gap-2"
+                        className="btn-secondary-consorcio"
                       >
-                        ✏️ Editar plantilla
+                        <Edit className="w-4 h-4" />
+                        Editar plantilla
                       </button>
                     </div>
                     
                     {/* Preview del template */}
-                    <div className="rounded-lg border-2 border-mineral-taupe/20 overflow-hidden bg-white">
+                    <div className="email-preview-container">
                       {/* Header simple */}
-                      <div className="bg-stone-gray/20 px-4 py-2 border-b border-mineral-taupe/10">
-                        <span className="text-xs font-medium text-mineral-taupe">📧 Vista previa del email</span>
+                      <div className="email-preview-header">
+                        <span className="text-xs font-medium text-mineral-taupe">Vista previa del email</span>
                       </div>
                       
                       {/* Contenido del template */}
-                      <div className="p-6 max-h-96 overflow-y-auto">
+                      <div className="email-preview-body">
                         <TemplatePreview action={config.action} refreshKey={refreshKey} />
                       </div>
                     </div>

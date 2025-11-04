@@ -55,7 +55,7 @@ export default function FileUpload({ file, onFileSelect }: FileUploadProps) {
                   e.stopPropagation();
                   onFileSelect(null);
                 }}
-                className="text-sm text-mineral-taupe hover:text-gold-vein underline"
+                className="btn-text-consorcio"
               >
                 Cambiar archivo
               </button>
