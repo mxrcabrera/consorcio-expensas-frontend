@@ -43,3 +43,11 @@ next-env.d.ts
 # gmail credentials
 credentials.json
 token.pickle
+
+# Local data (SQLite, temp files, logs)
+/data/
+/temp/
+/logs/
+
+# Claude local settings
+/.claude/
