@@ -11,6 +11,7 @@ import os
 import pickle
 import base64
 import re
+import json
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -39,7 +40,7 @@ class Config:
     # Modo test
     MODO_TEST = True
     EMAIL_TEST = "cabreramxr@gmail.com"
-    CANTIDAD_TEST = 32
+    CANTIDAD_TEST = None  # None = usar todas las unidades del Excel
     
     # Remitente
     NOMBRE_REMITENTE = "Consorcio Constitución 2226"
@@ -50,10 +51,30 @@ class Config:
     CREDENTIALS_FILE = 'credentials.json'
 
     AUTO_CONFIRM = False
-    
+
     MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     DIAS_SEMANA = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+    @classmethod
+    def load_from_building(cls, building_config: dict):
+        """Carga configuración desde un edificio (pasado por el frontend)"""
+        if not building_config:
+            return
+
+        if building_config.get('nombre_remitente'):
+            cls.NOMBRE_REMITENTE = building_config['nombre_remitente']
+
+        if building_config.get('email_remitente'):
+            cls.EMAIL_REMITENTE = building_config['email_remitente']
+
+        if building_config.get('ruta_base'):
+            cls.BASE_DIR = building_config['ruta_base']
+            cls.PDFS_DIR = os.path.join(cls.BASE_DIR, 'pdfs')
+            cls.LOGS_DIR = os.path.join(cls.BASE_DIR, 'logs')
+            # Crear directorios si no existen
+            os.makedirs(cls.PDFS_DIR, exist_ok=True)
+            os.makedirs(cls.LOGS_DIR, exist_ok=True)
 
 
 # ============ INICIALIZACIÓN ============
@@ -256,8 +277,9 @@ def preparar_datos_expensas():
     df = pd.read_excel(Config.DATOS_MAESTRO)
     
     if Config.MODO_TEST:
-        df = df.head(Config.CANTIDAD_TEST)
-        print(f"✓ MODO TEST: Solo {len(df)} unidades")
+        if Config.CANTIDAD_TEST is not None:
+            df = df.head(Config.CANTIDAD_TEST)
+        print(f"✓ MODO TEST: {len(df)} unidades")
         print(f"⚠️  TODOS LOS EMAILS SE ENVIARÁN A: {Config.EMAIL_TEST}\n")
     else:
         print(f"✓ {len(df)} unidades cargadas\n")
@@ -674,8 +696,18 @@ def main():
     parser.add_argument('--dias-corte', type=int, default=5)
     parser.add_argument('--subject', default='')
     parser.add_argument('--no-confirm', action='store_true')
-    
+    parser.add_argument('--building-config', default='', help='JSON con config del edificio')
+
     args = parser.parse_args()
+
+    # Cargar config del edificio si se pasó
+    if args.building_config:
+        try:
+            building_config = json.loads(args.building_config)
+            Config.load_from_building(building_config)
+            print(f"🏢 Edificio: {Config.NOMBRE_REMITENTE}", flush=True)
+        except json.JSONDecodeError as e:
+            print(f"⚠️  Error parseando building-config: {e}", flush=True)
     
     # Si no hay argumentos, mostrar menú
     if not args.action:

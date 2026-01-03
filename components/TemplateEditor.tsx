@@ -410,7 +410,12 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
             💡 Variables: 
             <code className="variable-tag">{'{nombre}'}</code> 
             <code className="variable-tag">{'{depto}'}</code> 
-            <code className="variable-tag">{'{mes_expensas}'}</code>
+            {currentAction === 'expensas' && (
+              <code className="variable-tag">{'{mes_expensas}'}</code>
+            )}
+            {currentAction === 'corte_luz' && (
+              <code className="variable-tag">{'{fecha_corte}'}</code>
+            )}
           </div>
 
           <div className="template-editor-actions">
@@ -418,7 +423,11 @@ export default function TemplateEditor({ show, onClose, currentAction }: Templat
               Cancelar
             </button>
             
-            <button onClick={saveTemplate} disabled={loading} className="btn-send-consorcio">
+            <button
+              onClick={saveTemplate}
+              disabled={loading}
+              className="btn-send-consorcio"
+            >
               <Save className="w-4 h-4" />
               {loading ? 'Guardando...' : 'Guardar cambios'}
             </button>

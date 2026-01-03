@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { createInterface } from 'readline';
 import path from 'path';
 import fs from 'fs/promises';
+import { getEdificioById, createEnvioLog } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -19,14 +20,29 @@ export async function POST(request: NextRequest) {
           const diasCorte = formData.get('diasCorte') as string;
           const subject = formData.get('subject') as string;
           const dataFile = formData.get('dataFile') as File;
+          const buildingId = formData.get('buildingId') as string;
 
           if (!action || !dataFile) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-              type: 'error', 
-              message: 'Faltan parámetros' 
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'error',
+              message: 'Faltan parámetros'
             })}\n\n`));
             controller.close();
             return;
+          }
+
+          // Obtener config del edificio
+          let buildingConfig = null;
+          if (buildingId) {
+            const edificio = getEdificioById(buildingId);
+            if (edificio) {
+              buildingConfig = {
+                id: edificio.id,
+                nombre_remitente: edificio.nombre_remitente,
+                email_remitente: edificio.email_remitente,
+                ruta_base: edificio.ruta_base,
+              };
+            }
           }
 
           const tempDir = path.join(process.cwd(), 'temp');
@@ -47,6 +63,11 @@ export async function POST(request: NextRequest) {
             '--dias-corte', diasCorte,
             '--no-confirm',
           ];
+
+          // Pasar config del edificio como JSON
+          if (buildingConfig) {
+            args.push('--building-config', JSON.stringify(buildingConfig));
+          }
 
           if (subject) {
             args.push('--subject', subject);
@@ -113,10 +134,26 @@ export async function POST(request: NextRequest) {
               const matchSent = outputBuffer.match(/enviados:\s*(\d+)/i);
               const matchErrors = outputBuffer.match(/errores:\s*(\d+)/i);
               const matchSalteados = outputBuffer.match(/salteados:\s*(\d+)/i);
-              
+
               const sent = matchSent ? parseInt(matchSent[1]) : 0;
               const errors = matchErrors ? parseInt(matchErrors[1]) : 0;
               const salteados = matchSalteados ? parseInt(matchSalteados[1]) : 0;
+
+              // Guardar log del envío
+              if (buildingId) {
+                try {
+                  createEnvioLog({
+                    edificio_id: buildingId,
+                    tipo_accion: action,
+                    total_enviados: sent,
+                    total_errores: errors,
+                    modo_test: testMode,
+                  });
+                  console.log('📝 Log de envío guardado');
+                } catch (logErr) {
+                  console.warn('⚠️  No se pudo guardar log de envío:', logErr);
+                }
+              }
 
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'complete',
@@ -127,6 +164,21 @@ export async function POST(request: NextRequest) {
                 message: `✅ Completado: ${sent} enviados, ${errors} errores, ${salteados} salteados`
               })}\n\n`));
             } else {
+              // Guardar log de error
+              if (buildingId) {
+                try {
+                  createEnvioLog({
+                    edificio_id: buildingId,
+                    tipo_accion: action,
+                    total_enviados: 0,
+                    total_errores: 1,
+                    modo_test: testMode,
+                  });
+                } catch (logErr) {
+                  console.warn('⚠️  No se pudo guardar log de error:', logErr);
+                }
+              }
+
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'complete',
                 success: false,

@@ -44,3 +44,14 @@ export interface Moroso {
   email: string;
   depto: string;
 }
+
+export interface Edificio {
+  id: string;
+  nombre: string;
+  direccion: string | null;
+  email_remitente: string | null;
+  nombre_remitente: string;
+  ruta_base: string;
+  created_at: string;
+  updated_at: string;
+}

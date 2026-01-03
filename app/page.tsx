@@ -7,7 +7,9 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import SendingProgress from '@/components/SendingProgress';
 import TemplateEditor from '@/components/TemplateEditor';
 import ExcelDataViewer from '@/components/ExcelDataViewer';
-import { ConfigState, ActionType, SendResult } from '@/types';
+import BuildingsManager from '@/components/BuildingsManager';
+import EnviosHistorial from '@/components/EnviosHistorial';
+import { ConfigState, ActionType, SendResult, Edificio } from '@/types';
 import Toast from '@/components/Toast';
 import { Badge } from '@/components/Badge';
 import { Edit } from 'lucide-react';
@@ -72,6 +74,12 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
 }
 
 export default function Home() {
+  // Estado de edificios
+  const [edificios, setEdificios] = useState<Edificio[]>([]);
+  const [selectedEdificioId, setSelectedEdificioId] = useState<string | null>(null);
+  const [showBuildingsManager, setShowBuildingsManager] = useState(false);
+  const [loadingEdificios, setLoadingEdificios] = useState(true);
+
   const [config, setConfig] = useState<ConfigState>({
     action: null,
     testMode: false,
@@ -86,21 +94,52 @@ export default function Home() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendingProgress, setSendingProgress] = useState({ sent: 0, total: 0, errors: 0 });
-  const [progressLines, setProgressLines] = useState<string[]>([]); // 🔥 NUEVO
+  const [progressLines, setProgressLines] = useState<string[]>([]);
   const [result, setResult] = useState<SendResult | null>(null);
 
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [showHistorial, setShowHistorial] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  
+
   const [excelData, setExcelData] = useState<any[]>([]);
   const [excelUnidades, setExcelUnidades] = useState<string[]>([]);
   const [totalUnidades, setTotalUnidades] = useState<number>(0);
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
-  
+
   const [selectedDeptos, setSelectedDeptos] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+
+  // Cargar edificios al inicio
+  useEffect(() => {
+    loadEdificios();
+  }, []);
+
+  const loadEdificios = async () => {
+    try {
+      setLoadingEdificios(true);
+      const res = await fetch('/api/buildings');
+      const data = await res.json();
+      if (data.success) {
+        setEdificios(data.data);
+        // Seleccionar el primero si hay
+        if (data.data.length > 0 && !selectedEdificioId) {
+          setSelectedEdificioId(data.data[0].id);
+        }
+        // Si no hay edificios, mostrar el manager para crear uno
+        if (data.data.length === 0) {
+          setShowBuildingsManager(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando edificios:', error);
+    } finally {
+      setLoadingEdificios(false);
+    }
+  };
+
+  const selectedEdificio = edificios.find(e => e.id === selectedEdificioId);
 
   const actions = [
     { id: 'expensas' as ActionType, icon: FileText, title: 'Envío de Expensas', desc: 'Con PDFs adjuntos' },
@@ -189,11 +228,16 @@ export default function Home() {
       formData.append('testEmail', config.testEmail);
       formData.append('pdfFolder', config.pdfFolder);
       formData.append('diasCorte', config.diasCorte?.toString() || '5');
-      
+
+      // Pasar edificio seleccionado
+      if (selectedEdificioId) {
+        formData.append('buildingId', selectedEdificioId);
+      }
+
       if (config.subject) {
         formData.append('subject', config.subject);
       }
-      
+
       if (config.dataFile) {
         formData.append('dataFile', config.dataFile);
       }
@@ -263,7 +307,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <Header onOpenExcel={() => setShowExcelViewer(true)} />
+      <Header
+        onOpenExcel={() => setShowExcelViewer(true)}
+        onOpenHistorial={() => setShowHistorial(true)}
+        edificios={edificios}
+        selectedEdificioId={selectedEdificioId}
+        onSelectEdificio={setSelectedEdificioId}
+        onManageEdificios={() => setShowBuildingsManager(true)}
+      />
 
       <div className="tagline-section">
         <div className="max-w-7xl mx-auto px-6">
@@ -711,6 +762,31 @@ export default function Home() {
         onFileSelect={handleExcelUpload}
       />
 
+      <BuildingsManager
+        show={showBuildingsManager}
+        onClose={() => setShowBuildingsManager(false)}
+        onEdificioCreated={(edificio) => {
+          setEdificios([...edificios, edificio]);
+          setSelectedEdificioId(edificio.id);
+        }}
+        onEdificioUpdated={(edificio) => {
+          setEdificios(edificios.map(e => e.id === edificio.id ? edificio : e));
+        }}
+        onEdificioDeleted={(id) => {
+          setEdificios(edificios.filter(e => e.id !== id));
+          if (selectedEdificioId === id) {
+            setSelectedEdificioId(edificios[0]?.id || null);
+          }
+        }}
+      />
+
+      <EnviosHistorial
+        show={showHistorial}
+        onClose={() => setShowHistorial(false)}
+        edificioId={selectedEdificioId}
+        edificioNombre={selectedEdificio?.nombre || ''}
+      />
+
       <Toast
         show={toast.show}
         message={toast.message}
@@ -721,7 +797,7 @@ export default function Home() {
       <footer className="consorcio-footer">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-sm text-mineral-taupe">
-            © 2025 Consorcio Expensas • MxrCabrera Dev
+            © 2026 {selectedEdificio?.nombre || 'Consorcio Expensas'} • MxrCabrera Dev
           </p>
         </div>
       </footer>
