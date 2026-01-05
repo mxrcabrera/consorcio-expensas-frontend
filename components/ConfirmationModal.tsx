@@ -57,26 +57,38 @@ export default function ConfirmationModal({
                 </span>
               </div>
               
-              {/* MOSTRAR UFs Y PDFs POR SEPARADO PARA EXPENSAS */}
-              {config.action === 'expensas' && totalUnidades && (
-                <>
-                  <div className="confirmation-summary-item">
-                    <span className="confirmation-summary-label">Unidades Funcionales:</span>
-                    <span className="confirmation-summary-value">{totalUnidades}</span>
-                  </div>
-                  <div className="confirmation-summary-item">
-                    <span className="confirmation-summary-label">Total PDFs:</span>
-                    <span className="confirmation-summary-value-highlight">{totalEmails}</span>
-                  </div>
-                </>
-              )}
-              
-              {/* PARA OTROS TIPOS, SOLO MOSTRAR TOTAL EMAILS */}
-              {config.action !== 'expensas' && (
+              {/* MODO TEST CON LIMITE: mostrar cantidad limitada */}
+              {config.testMode && config.testEmailCount > 0 ? (
                 <div className="confirmation-summary-item">
-                  <span className="confirmation-summary-label">Total emails:</span>
-                  <span className="confirmation-summary-value-highlight">{totalEmails}</span>
+                  <span className="confirmation-summary-label">Emails a enviar:</span>
+                  <span className="confirmation-summary-value-highlight">
+                    {Math.min(config.testEmailCount, totalUnidades || totalEmails)} (prueba de formato)
+                  </span>
                 </div>
+              ) : (
+                <>
+                  {/* MOSTRAR UFs Y PDFs POR SEPARADO PARA EXPENSAS */}
+                  {config.action === 'expensas' && totalUnidades && (
+                    <>
+                      <div className="confirmation-summary-item">
+                        <span className="confirmation-summary-label">Unidades Funcionales:</span>
+                        <span className="confirmation-summary-value">{totalUnidades}</span>
+                      </div>
+                      <div className="confirmation-summary-item">
+                        <span className="confirmation-summary-label">Total PDFs:</span>
+                        <span className="confirmation-summary-value-highlight">{totalEmails}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* PARA OTROS TIPOS, SOLO MOSTRAR TOTAL EMAILS */}
+                  {config.action !== 'expensas' && (
+                    <div className="confirmation-summary-item">
+                      <span className="confirmation-summary-label">Total emails:</span>
+                      <span className="confirmation-summary-value-highlight">{totalEmails}</span>
+                    </div>
+                  )}
+                </>
               )}
               
               {config.subject && (

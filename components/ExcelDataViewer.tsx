@@ -10,13 +10,7 @@ interface ExcelDataViewerProps {
   onFileSelect: (file: File) => void;
 }
 
-const isEmailColumn = (columnName: string): boolean => {
-  const emailKeywords = ['email', 'mail', 'correo', 'e-mail', 'e_mail'];
-  const normalized = columnName.toLowerCase().trim();
-  return emailKeywords.some(keyword => normalized.includes(keyword));
-};
-
-const isEmpty = (val: any): boolean => {
+const isEmpty = (val: unknown): boolean => {
   if (val === null || val === undefined) return true;
   if (typeof val === 'string') {
     const normalized = val.trim().toUpperCase();

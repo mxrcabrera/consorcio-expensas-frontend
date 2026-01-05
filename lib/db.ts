@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { Edificio } from '@/types';
 
 // Ruta de la base de datos
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -73,16 +74,8 @@ function initSchema() {
 
 // ============ EDIFICIOS ============
 
-export interface Edificio {
-  id: string;
-  nombre: string;
-  direccion: string | null;
-  email_remitente: string | null;
-  nombre_remitente: string;
-  ruta_base: string;
-  created_at: string;
-  updated_at: string;
-}
+// Re-export Edificio from types for backwards compatibility
+export type { Edificio } from '@/types';
 
 export function getAllEdificios(): Edificio[] {
   const database = getDb();
@@ -128,7 +121,7 @@ export function updateEdificio(id: string, data: Partial<Omit<Edificio, 'id' | '
   if (!existing) return undefined;
 
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | null)[] = [];
 
   if (data.nombre !== undefined) {
     updates.push('nombre = ?');

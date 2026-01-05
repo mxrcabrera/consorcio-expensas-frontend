@@ -9,7 +9,7 @@ import TemplateEditor from '@/components/TemplateEditor';
 import ExcelDataViewer from '@/components/ExcelDataViewer';
 import BuildingsManager from '@/components/BuildingsManager';
 import EnviosHistorial from '@/components/EnviosHistorial';
-import { ConfigState, ActionType, SendResult, Edificio } from '@/types';
+import { ConfigState, ActionType, SendResult, Edificio, ExcelRow } from '@/types';
 import Toast from '@/components/Toast';
 import { Badge } from '@/components/Badge';
 import { Edit } from 'lucide-react';
@@ -84,6 +84,7 @@ export default function Home() {
     action: null,
     testMode: false,
     testEmail: '',
+    testEmailCount: 1, // 0 = todos, 1 = solo 1, 5 = solo 5
     dataFile: null,
     pdfFolder: '',
     month: '',
@@ -102,7 +103,7 @@ export default function Home() {
   const [showHistorial, setShowHistorial] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [excelData, setExcelData] = useState<any[]>([]);
+  const [excelData, setExcelData] = useState<ExcelRow[]>([]);
   const [excelUnidades, setExcelUnidades] = useState<string[]>([]);
   const [totalUnidades, setTotalUnidades] = useState<number>(0);
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
@@ -165,9 +166,9 @@ export default function Home() {
       if (data.success && data.data) {
         setExcelData(data.data);
         
-        const unidades = data.data.map((row: any) => 
+        const unidades = data.data.map((row: ExcelRow) =>
           row.N || row.n || row.Depto || row.depto || row.Unidad || row.unidad || ''
-        ).filter(Boolean);
+        ).filter(Boolean).map(String);
         
         setExcelUnidades(unidades);
         setTotalUnidades(data.data.length);
@@ -212,20 +213,58 @@ export default function Home() {
     return true;
   };
 
+  // AbortController para cancelar envíos
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const handleCancelSend = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+    }
+    setSending(false);
+    setResult({
+      success: false,
+      sent: sendingProgress.sent,
+      errors: sendingProgress.errors,
+      message: `Cancelado por el usuario. ${sendingProgress.sent} enviados antes de cancelar.`,
+    });
+  };
+
   const handleConfirmSend = async () => {
     setShowConfirmation(false);
     setSending(true);
     setResult(null);
     setProgressLines([]); // LIMPIAR LÍNEAS
 
-    const totalItems = totalUnidades;
+    // Calcular total según modo test y testEmailCount
+    let totalItems = totalUnidades;
+    if (config.testMode && config.testEmailCount > 0) {
+      totalItems = Math.min(config.testEmailCount, totalUnidades);
+    }
     setSendingProgress({ sent: 0, total: totalItems, errors: 0 });
+
+    // Validación previa
+    if (!config.dataFile) {
+      setResult({
+        success: false,
+        sent: 0,
+        errors: 0,
+        message: 'Error: No hay archivo Excel cargado',
+      });
+      setSending(false);
+      return;
+    }
+
+    // Crear AbortController para poder cancelar
+    const controller = new AbortController();
+    setAbortController(controller);
 
     try {
       const formData = new FormData();
       formData.append('action', config.action || '');
       formData.append('testMode', config.testMode.toString());
       formData.append('testEmail', config.testEmail);
+      formData.append('testEmailCount', config.testEmailCount.toString());
       formData.append('pdfFolder', config.pdfFolder);
       formData.append('diasCorte', config.diasCorte?.toString() || '5');
 
@@ -238,14 +277,20 @@ export default function Home() {
         formData.append('subject', config.subject);
       }
 
-      if (config.dataFile) {
-        formData.append('dataFile', config.dataFile);
-      }
+      formData.append('dataFile', config.dataFile);
 
+      console.log('📤 Enviando request a /api/enviar...');
       const response = await fetch('/api/enviar', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+
+      console.log('📥 Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+      }
 
       if (!response.body) throw new Error('No response body');
 
@@ -267,8 +312,11 @@ export default function Home() {
 
               if (data.type === 'progress') {
                 setProgressLines(prev => [...prev, data.line]);
-                sentCount++;
-                setSendingProgress({ sent: sentCount, total: totalItems, errors: 0 });
+                // Solo contar como enviado si la línea indica un email enviado exitosamente
+                if (data.line && data.line.includes('[OK]') && data.line.includes('->')) {
+                  sentCount++;
+                  setSendingProgress({ sent: sentCount, total: totalItems, errors: 0 });
+                }
               } else if (data.type === 'complete') {
                 if (data.success) {
                   setSendingProgress({ sent: data.sent, total: totalItems, errors: data.errors });
@@ -293,15 +341,22 @@ export default function Home() {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      // No mostrar error si fue cancelado por el usuario
+      if (error.name === 'AbortError') {
+        console.log('Envío cancelado por el usuario');
+        return;
+      }
+      console.error('💥 Error en handleConfirmSend:', error);
       setResult({
         success: false,
         sent: 0,
         errors: 0,
-        message: 'Error de conexión',
+        message: `Error: ${error.message || 'Error de conexión'}`,
       });
     } finally {
       setSending(false);
+      setAbortController(null);
     }
   };
 
@@ -542,10 +597,10 @@ export default function Home() {
                   {!selectAll && (
                     <div className="recipients-list">
                       {excelData.map((row, idx) => {
-                        const depto = row.Depto || row.depto || row.N || row.n;
-                        const nombre = row.Nombre || row.nombre || '';
-                        const email = row.Email || row.email || '';
-                        
+                        const depto = String(row.Depto || row.depto || row.N || row.n || '');
+                        const nombre = String(row.Nombre || row.nombre || '');
+                        const email = String(row.Email || row.email || '');
+
                         return (
                           <label key={idx} className="recipient-item">
                             <input
@@ -661,13 +716,41 @@ export default function Home() {
                       </p>
                       
                       {config.testMode && (
-                        <input
-                          type="email"
-                          value={config.testEmail}
-                          onChange={(e) => setConfig({ ...config, testEmail: e.target.value })}
-                          placeholder="tu@email.com"
-                          className="test-mode-email-input"
-                        />
+                        <>
+                          <input
+                            type="email"
+                            value={config.testEmail}
+                            onChange={(e) => setConfig({ ...config, testEmail: e.target.value })}
+                            placeholder="tu@email.com"
+                            className="test-mode-email-input"
+                          />
+                          <div className="test-email-count-options">
+                            <span className="test-email-count-label">Cantidad de emails:</span>
+                            <div className="test-email-count-buttons">
+                              <button
+                                type="button"
+                                className={`test-email-count-btn ${config.testEmailCount === 1 ? 'active' : ''}`}
+                                onClick={() => setConfig({ ...config, testEmailCount: 1 })}
+                              >
+                                1
+                              </button>
+                              <button
+                                type="button"
+                                className={`test-email-count-btn ${config.testEmailCount === 5 ? 'active' : ''}`}
+                                onClick={() => setConfig({ ...config, testEmailCount: 5 })}
+                              >
+                                5
+                              </button>
+                              <button
+                                type="button"
+                                className={`test-email-count-btn ${config.testEmailCount === 0 ? 'active' : ''}`}
+                                onClick={() => setConfig({ ...config, testEmailCount: 0 })}
+                              >
+                                Todos
+                              </button>
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   </label>
@@ -744,6 +827,7 @@ export default function Home() {
         total={sendingProgress.total}
         errors={sendingProgress.errors}
         lines={progressLines}
+        onCancel={handleCancelSend}
       />
 
       <TemplateEditor
@@ -797,7 +881,7 @@ export default function Home() {
       <footer className="consorcio-footer">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-sm text-mineral-taupe">
-            © 2026 {selectedEdificio?.nombre || 'Consorcio Expensas'} • MxrCabrera Dev
+            © {new Date().getFullYear()} {selectedEdificio?.nombre || 'Consorcio Expensas'} • MxrCabrera Dev
           </p>
         </div>
       </footer>

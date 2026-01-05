@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, X } from 'lucide-react';
 
 interface SendingProgressProps {
   show: boolean;
@@ -9,6 +9,7 @@ interface SendingProgressProps {
   total: number;
   errors: number;
   lines: string[];
+  onCancel: () => void;
 }
 
 export default function SendingProgress({
@@ -17,6 +18,7 @@ export default function SendingProgress({
   total,
   errors,
   lines = [],
+  onCancel,
 }: SendingProgressProps) {
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +47,7 @@ export default function SendingProgress({
       <div className="sending-progress-container">
         <div className="sending-progress-header">
           <Loader2 className="sending-progress-spinner" />
-          
+
           <div className="sending-progress-title-group">
             <h3 className="sending-progress-title">Enviando...</h3>
             <p className="sending-progress-subtitle">Procesando notificaciones</p>
@@ -95,6 +97,13 @@ export default function SendingProgress({
               ))
             )}
           </div>
+        </div>
+
+        <div className="sending-progress-footer">
+          <button onClick={onCancel} className="btn-cancel-send">
+            <X className="w-4 h-4" />
+            Cancelar envío
+          </button>
         </div>
       </div>
     </div>

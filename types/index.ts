@@ -4,25 +4,12 @@ export interface ConfigState {
   action: ActionType;
   testMode: boolean;
   testEmail: string;
+  testEmailCount: number; // 0 = todos, 1 = solo 1, 5 = solo 5
   dataFile: File | null;
   pdfFolder: string;
   month: string;
   subject?: string;
   diasCorte?: number;
-}
-
-export interface ActionConfig {
-  id: ActionType;
-  icon: React.ComponentType<{ className?: string }>;
-  code: string;
-  title: string;
-  description: string;
-}
-
-export interface EmailTemplate {
-  subject: string;
-  body: string;
-  attachments?: string[];
 }
 
 export interface SendResult {
@@ -31,18 +18,6 @@ export interface SendResult {
   errors: number;
   message: string;
   details?: string[];
-}
-
-export interface PDFValidation {
-  valid: boolean;
-  missing: string[];
-  found: string[];
-}
-
-export interface Moroso {
-  nombre: string;
-  email: string;
-  depto: string;
 }
 
 export interface Edificio {
@@ -54,4 +29,19 @@ export interface Edificio {
   ruta_base: string;
   created_at: string;
   updated_at: string;
+}
+
+// Excel row data from parsed spreadsheet
+export interface ExcelRow {
+  N?: string | number;
+  n?: string | number;
+  Depto?: string;
+  depto?: string;
+  Nombre?: string;
+  nombre?: string;
+  Email?: string;
+  email?: string;
+  Unidad?: string;
+  unidad?: string;
+  [key: string]: string | number | null | undefined;
 }

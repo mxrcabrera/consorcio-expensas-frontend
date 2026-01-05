@@ -95,17 +95,18 @@
 }
 
 .consorcio-logo {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 20px;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
   background: linear-gradient(135deg, #2C2624 0%, #1A1816 50%, #000000 100%);
-  box-shadow: 
-    0 8px 32px rgba(44, 38, 36, 0.25),
+  box-shadow:
+    0 4px 16px rgba(44, 38, 36, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 0 0 1px rgba(154, 52, 18, 0.4);
   transition: all var(--transition-base);
@@ -133,7 +134,7 @@
 
 .logo-text {
   font-family: var(--font-family-serif);
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 600;
   position: relative;
   z-index: 10;
@@ -1719,35 +1720,60 @@ input[type="checkbox"]:focus-visible {
 .header-container {
   max-width: 90rem;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1rem 1.5rem;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
 }
 
 .header-brand {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
+  flex-shrink: 0;
 }
 
 .header-title {
   font-family: var(--font-family-serif);
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-deep-stone);
+  margin: 0;
+  line-height: 1.2;
 }
 
 .header-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-mineral-taupe);
-  margin-top: 0.125rem;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .header-actions {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Responsive: Stack on very small screens only */
+@media (max-width: 640px) {
+  .header-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 .header-separator {
@@ -2196,6 +2222,35 @@ input[type="checkbox"]:focus-visible {
   color: #374151;
 }
 
+/* ===== SENDING PROGRESS FOOTER ===== */
+.sending-progress-footer {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(120, 113, 108, 0.15);
+  background: rgba(248, 246, 242, 0.5);
+}
+
+.btn-cancel-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: transparent;
+  border: 2px solid #dc2626;
+  border-radius: var(--radius-md);
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-cancel-send:hover {
+  background: #dc2626;
+  color: white;
+}
+
 /* ===== PROGRESS BAR TEXT ===== */
 .progress-bar-header {
   display: flex;
@@ -2586,6 +2641,53 @@ input[type="checkbox"]:focus-visible {
 .test-mode-email-input:focus {
   outline: none;
   border-color: var(--color-gold-vein);
+}
+
+/* ===== TEST EMAIL COUNT OPTIONS ===== */
+.test-email-count-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(120, 113, 108, 0.05);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(120, 113, 108, 0.15);
+}
+
+.test-email-count-label {
+  font-size: 0.85rem;
+  color: var(--color-mineral-taupe);
+  font-weight: 500;
+}
+
+.test-email-count-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.test-email-count-btn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 2px solid rgba(120, 113, 108, 0.2);
+  border-radius: var(--radius-md);
+  background: var(--color-marble-white);
+  color: var(--color-deep-stone);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.test-email-count-btn:hover {
+  border-color: var(--color-gold-vein);
+  background: rgba(154, 52, 18, 0.05);
+}
+
+.test-email-count-btn.active {
+  background: var(--color-gold-vein);
+  border-color: var(--color-gold-vein);
+  color: white;
 }
 
 /* ===== SEND BUTTON WRAPPER ===== */

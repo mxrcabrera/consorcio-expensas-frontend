@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
           const action = formData.get('action') as string;
           const testMode = formData.get('testMode') === 'true';
           const testEmail = formData.get('testEmail') as string;
+          const testEmailCount = parseInt(formData.get('testEmailCount') as string) || 0;
           const pdfFolder = formData.get('pdfFolder') as string;
           const diasCorte = formData.get('diasCorte') as string;
           const subject = formData.get('subject') as string;
@@ -51,14 +52,21 @@ export async function POST(request: NextRequest) {
           const bytes = await dataFile.arrayBuffer();
           await fs.writeFile(tempExcelPath, Buffer.from(bytes));
 
+          // Determinar carpeta de PDFs: usar ruta_base del edificio directamente (los PDFs estan ahi)
+          let effectivePdfFolder = pdfFolder;
+          if (buildingConfig && buildingConfig.ruta_base) {
+            effectivePdfFolder = buildingConfig.ruta_base;
+          }
+
           const args = [
             '-u',
             path.join(process.cwd(), 'python', 'expensas.py'),
             '--action', action,
             '--test-mode', testMode.toString(),
             '--test-email', testEmail,
+            '--test-email-count', (testMode ? testEmailCount : 0).toString(),
             '--data-file', tempExcelPath,
-            '--pdf-folder', pdfFolder,
+            '--pdf-folder', effectivePdfFolder || '',
             '--plantillas-dir', path.join(process.cwd(), 'templates'),
             '--dias-corte', diasCorte,
             '--no-confirm',
@@ -73,16 +81,28 @@ export async function POST(request: NextRequest) {
             args.push('--subject', subject);
           }
 
-          console.log('🐍 Ejecutando Python:', args.join(' '));
+          console.log('[API] Ejecutando Python con args:', args);
+          console.log('[API] CWD:', process.cwd());
+
+          // Enviar evento inicial para confirmar que el stream funciona
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'progress',
+            line: 'Iniciando proceso de envio...'
+          })}\n\n`));
 
           const pythonProcess = spawn('python', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: { 
-              ...process.env, 
-              PYTHONUNBUFFERED: '1',
-              PYTHONIOENCODING: 'utf-8'
+            env: {
+              ...process.env,
+              PYTHONUNBUFFERED: '1'
             }
           });
+
+          // Confirmar que Python se inicio
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'progress',
+            line: 'Python iniciado, esperando output...'
+          })}\n\n`));
 
           let outputBuffer = '';
           let errorBuffer = '';
@@ -95,12 +115,12 @@ export async function POST(request: NextRequest) {
 
           rl.on('line', (line) => {
             outputBuffer += line + '\n';
-            console.log('📤', line);
-            
-            // Enviar TODAS las líneas al frontend
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-              type: 'progress', 
-              line: line.trim() 
+            console.log('[PY]', line);
+
+            // Enviar TODAS las lineas al frontend
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'progress',
+              line: line.trim()
             })}\n\n`));
           });
 
@@ -108,25 +128,50 @@ export async function POST(request: NextRequest) {
           pythonProcess.stderr.on('data', (data) => {
             const errorText = data.toString();
             errorBuffer += errorText;
-            console.error('❌ Python stderr:', errorText);
-            
-            // Enviar errores también
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-              type: 'error', 
-              line: errorText.trim() 
+            console.error('[PY ERROR]', errorText);
+
+            // Enviar errores tambien
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'progress',
+              line: `[ERROR] ${errorText.trim()}`
             })}\n\n`));
           });
+
+          // Handler para errores de spawn
+          pythonProcess.on('error', (err) => {
+            console.error('[API ERROR] Error spawning Python:', err);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'complete',
+              success: false,
+              message: `Error ejecutando Python: ${err.message}`
+            })}\n\n`));
+            controller.close();
+          });
+
+          // Timeout de seguridad (5 minutos) - DEBE estar antes de on('close')
+          const timeoutId = setTimeout(() => {
+            if (!pythonProcess.killed) {
+              console.warn('[API] Timeout: matando proceso Python');
+              pythonProcess.kill();
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'complete',
+                success: false,
+                message: 'Timeout: El proceso tardo mas de 5 minutos'
+              })}\n\n`));
+              controller.close();
+            }
+          }, 5 * 60 * 1000);
 
           // Cuando termina el proceso
           pythonProcess.on('close', async (code) => {
             clearTimeout(timeoutId);
-            console.log('🏁 Python terminó con código:', code);
-            
+            console.log('[API] Python termino con codigo:', code);
+
             // Limpiar archivo temporal
             try {
               await fs.unlink(tempExcelPath);
             } catch (err) {
-              console.warn('⚠️  No se pudo eliminar archivo temporal:', err);
+              console.warn('[API] No se pudo eliminar archivo temporal:', err);
             }
 
             if (code === 0) {
@@ -139,7 +184,7 @@ export async function POST(request: NextRequest) {
               const errors = matchErrors ? parseInt(matchErrors[1]) : 0;
               const salteados = matchSalteados ? parseInt(matchSalteados[1]) : 0;
 
-              // Guardar log del envío
+              // Guardar log del envio
               if (buildingId) {
                 try {
                   createEnvioLog({
@@ -149,9 +194,9 @@ export async function POST(request: NextRequest) {
                     total_errores: errors,
                     modo_test: testMode,
                   });
-                  console.log('📝 Log de envío guardado');
+                  console.log('[API] Log de envio guardado');
                 } catch (logErr) {
-                  console.warn('⚠️  No se pudo guardar log de envío:', logErr);
+                  console.warn('[API] No se pudo guardar log de envio:', logErr);
                 }
               }
 
@@ -161,7 +206,7 @@ export async function POST(request: NextRequest) {
                 sent,
                 errors,
                 salteados,
-                message: `✅ Completado: ${sent} enviados, ${errors} errores, ${salteados} salteados`
+                message: `Completado: ${sent} enviados, ${errors} errores, ${salteados} salteados`
               })}\n\n`));
             } else {
               // Guardar log de error
@@ -175,36 +220,27 @@ export async function POST(request: NextRequest) {
                     modo_test: testMode,
                   });
                 } catch (logErr) {
-                  console.warn('⚠️  No se pudo guardar log de error:', logErr);
+                  console.warn('[API] No se pudo guardar log de error:', logErr);
                 }
               }
+
+              // Incluir tanto stderr como stdout para debug
+              const errorMessage = errorBuffer || outputBuffer || 'Error desconocido en Python';
+              console.error('[API] Python fallo. stderr:', errorBuffer);
+              console.error('[API] Python fallo. stdout:', outputBuffer);
 
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'complete',
                 success: false,
-                message: errorBuffer || 'Error desconocido en Python'
+                message: errorMessage.substring(0, 500) // Limitar longitud
               })}\n\n`));
             }
 
             controller.close();
           });
 
-          // Timeout de seguridad (5 minutos)
-          const timeoutId = setTimeout(() => {
-            if (!pythonProcess.killed) {
-              console.warn('⏰ Timeout: matando proceso Python');
-              pythonProcess.kill();
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'complete',
-                success: false,
-                message: 'Timeout: El proceso tardó más de 5 minutos'
-              })}\n\n`));
-              controller.close();
-            }
-          }, 5 * 60 * 1000);
-
         } catch (error: any) {
-          console.error('💥 Error en streaming:', error);
+          console.error('[API ERROR] Error en streaming:', error);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'complete',
             success: false,
