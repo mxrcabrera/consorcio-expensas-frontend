@@ -63,14 +63,10 @@ consorcio-expensas-frontend/
 │   ├── EnviosHistorial.tsx       # Modal historial de envíos
 │   ├── TemplateEditor.tsx        # Editor de plantillas HTML
 │   ├── ExcelDataViewer.tsx       # Visor de datos Excel
-│   ├── ConfirmationModal.tsx     # Modal de confirmación
-│   ├── SendingProgress.tsx       # Progress de envío en tiempo real
-│   ├── ActionSelector.tsx        # Selector tipo de envío
-│   ├── FileUpload.tsx            # Upload de archivos
+│   ├── ConfirmationModal.tsx     # Modal de confirmación pre-envío
+│   ├── SendingProgress.tsx       # Progress de envío con botón cancelar
 │   ├── Toast.tsx                 # Notificaciones
-│   ├── Badge.tsx                 # Badges/tags
-│   ├── Modal.tsx                 # Modal base reutilizable
-│   └── ...                       # Otros componentes UI
+│   └── Badge.tsx                 # Badges/tags
 │
 ├── lib/                          # Utilidades y DB
 │   ├── db.ts                     # SQLite: conexión + queries
@@ -200,10 +196,16 @@ consorcio-expensas-frontend/
 2. Cargar Excel con destinatarios
 3. (Expensas) Cargar PDFs / (Otros) Seleccionar destinatarios
 4. Revisar template del email
-5. Activar modo test (opcional)
+5. Activar modo test (opcional) con selector de cantidad (1, 5, o todos)
 6. Confirmar y enviar
-7. Ver progreso en tiempo real
+7. Ver progreso en tiempo real (con opción de cancelar)
 8. Resultado guardado en historial
+
+#### 4.6 Modo Test con Límite de Emails
+- **Selector de cantidad**: 1, 5, o todos los emails
+- **Protección anti-ban**: Evita enviar muchos emails de prueba a Gmail
+- **Progress correcto**: Muestra x/1 o x/5 según selección
+- **Cancelación**: Botón para abortar envío en progreso
 
 #### 4.4 Editor de Templates
 - Edición de HTML con preview en vivo
@@ -295,6 +297,7 @@ Este sistema es una **aplicación de escritorio local** (desktop app). No hay:
 action: "expensas" | "corte_luz" | "avisos_generales"
 testMode: "true" | "false"
 testEmail: "email@test.com"
+testEmailCount: "0" | "1" | "5"  # 0=todos, 1=solo 1, 5=solo 5
 pdfFolder: "C:/path/to/pdfs"
 diasCorte: "5"
 subject: "Asunto personalizado" (solo avisos_generales)
@@ -382,10 +385,26 @@ class Config:
     # Modo test
     MODO_TEST = True
     EMAIL_TEST = "tu@email.com"
+    TEST_EMAIL_COUNT = 0  # 0=todos, >0=limitar cantidad
 
     # Remitente (se carga desde edificio)
     NOMBRE_REMITENTE = "Consorcio XYZ"
     EMAIL_REMITENTE = "consorcio@gmail.com"
+```
+
+### CLI Arguments (python/expensas.py)
+
+```bash
+python expensas.py \
+  --action expensas \
+  --test-mode true \
+  --test-email tu@email.com \
+  --test-email-count 5 \        # 0=todos, 1=solo 1, 5=solo 5
+  --data-file /path/to/excel.xlsx \
+  --pdf-folder /path/to/pdfs \
+  --plantillas-dir /path/to/templates \
+  --building-config '{"nombre_remitente":"..."}' \
+  --no-confirm
 ```
 
 ---
@@ -433,10 +452,10 @@ MONTHS: string[]  // ["Enero 2025", ...]
 
 | Componente | Props | Uso |
 |------------|-------|-----|
-| `Modal` | `show`, `onClose`, `title`, `children` | Base para modales |
 | `Toast` | `show`, `message`, `type`, `onClose` | Notificaciones |
 | `Badge` | `variant`, `children` | Tags de estado |
-| `Card` | `className`, `children` | Contenedor con estilos |
+| `SendingProgress` | `show`, `sent`, `total`, `errors`, `lines`, `onCancel` | Progress con cancelación |
+| `ConfirmationModal` | `show`, `config`, `totalEmails`, `onConfirm`, `onCancel` | Confirmación pre-envío |
 
 ### Patrones de DB (`lib/db.ts`)
 
@@ -566,5 +585,16 @@ npm start
 
 ---
 
-*Documento generado: Enero 2026*
-*Versión: 1.0*
+## 15. Changelog Reciente
+
+### v1.1.0 (Enero 2026)
+- **Selector de cantidad en modo test**: Botones para elegir 1, 5, o todos los emails
+- **Botón cancelar**: Permite abortar envíos en progreso
+- **Progress bar dinámico**: Muestra x/1 o x/5 según cantidad seleccionada
+- **AbortController**: Frontend puede cancelar fetch y notificar al usuario
+- **Limpieza de componentes**: Eliminados componentes no utilizados
+
+---
+
+*Documento actualizado: Enero 2026*
+*Versión: 1.1*
