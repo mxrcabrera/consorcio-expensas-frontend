@@ -68,7 +68,7 @@ export default function ConfirmationModal({
               ) : (
                 <>
                   {/* MOSTRAR UFs Y PDFs POR SEPARADO PARA EXPENSAS */}
-                  {config.action === 'expensas' && totalUnidades && (
+                  {config.action === 'expensas' && totalUnidades != null && totalUnidades > 0 && (
                     <>
                       <div className="confirmation-summary-item">
                         <span className="confirmation-summary-label">Unidades Funcionales:</span>

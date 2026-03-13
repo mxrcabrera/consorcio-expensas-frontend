@@ -28,25 +28,29 @@ function TemplatePreview({ action, refreshKey }: { action: ActionType | null; re
       'aviso_general.html';
     
     fetch(`/api/templates?file=${fileName}&t=${Date.now()}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (data.content) {
           const parser = new DOMParser();
           const doc = parser.parseFromString(data.content, 'text/html');
-          const bodyContent = doc.body.innerHTML;
-          setTemplateContent(bodyContent);
+          setTemplateContent(doc.body.innerHTML);
         }
       })
       .catch(err => console.error('Error cargando preview:', err));
-    
+
     fetch(`/api/templates?file=firma.html&t=${Date.now()}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (data.content) {
           const parser = new DOMParser();
           const doc = parser.parseFromString(data.content, 'text/html');
-          const bodyContent = doc.body.innerHTML;
-          setFirmaContent(bodyContent);
+          setFirmaContent(doc.body.innerHTML);
         }
       })
       .catch(err => console.error('Error cargando firma:', err));
@@ -78,7 +82,7 @@ export default function Home() {
   const [edificios, setEdificios] = useState<Edificio[]>([]);
   const [selectedEdificioId, setSelectedEdificioId] = useState<string | null>(null);
   const [showBuildingsManager, setShowBuildingsManager] = useState(false);
-  const [loadingEdificios, setLoadingEdificios] = useState(true);
+  const [, setLoadingEdificios] = useState(true);
 
   const [config, setConfig] = useState<ConfigState>({
     action: null,
@@ -121,12 +125,12 @@ export default function Home() {
     try {
       setLoadingEdificios(true);
       const res = await fetch('/api/buildings');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
         setEdificios(data.data);
-        // Seleccionar el primero si hay
-        if (data.data.length > 0 && !selectedEdificioId) {
-          setSelectedEdificioId(data.data[0].id);
+        if (data.data.length > 0) {
+          setSelectedEdificioId(prev => prev ?? data.data[0].id);
         }
         // Si no hay edificios, mostrar el manager para crear uno
         if (data.data.length === 0) {
@@ -139,6 +143,28 @@ export default function Home() {
       setLoadingEdificios(false);
     }
   };
+
+  // Auto-load saved Excel when building changes
+  useEffect(() => {
+    if (!selectedEdificioId) return;
+
+    const loadSavedExcel = async () => {
+      try {
+        const res = await fetch(`/api/excel?edificioId=${selectedEdificioId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          applyExcelData(data.data);
+          // Mark that we have persisted data (no File object needed)
+          setConfig(prev => ({ ...prev, dataFile: prev.dataFile ?? new File([], 'saved') }));
+        }
+      } catch {
+        // No saved data, that's fine
+      }
+    };
+
+    loadSavedExcel();
+  }, [selectedEdificioId]);
 
   const selectedEdificio = edificios.find(e => e.id === selectedEdificioId);
 
@@ -154,30 +180,30 @@ export default function Home() {
     type: 'success'
   });
 
+  const applyExcelData = (rows: ExcelRow[]) => {
+    setExcelData(rows);
+    const unidades = rows.map((row: ExcelRow) =>
+      row.N || row.n || row.Depto || row.depto || row.Unidad || row.unidad || ''
+    ).filter(Boolean).map(String);
+    setExcelUnidades(unidades);
+    setTotalUnidades(rows.length);
+  };
+
   const handleExcelUpload = async (file: File) => {
-    setConfig({ ...config, dataFile: file });
-    
+    setConfig(prev => ({ ...prev, dataFile: file }));
+
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (selectedEdificioId) {
+        formData.append('edificioId', selectedEdificioId);
+      }
       const res = await fetch('/api/excel', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      
+
       if (data.success && data.data) {
-        setExcelData(data.data);
-        
-        const unidades = data.data.map((row: ExcelRow) =>
-          row.N || row.n || row.Depto || row.depto || row.Unidad || row.unidad || ''
-        ).filter(Boolean).map(String);
-        
-        setExcelUnidades(unidades);
-        setTotalUnidades(data.data.length);
-        
-        console.log('📊 Excel cargado:', {
-          total: data.data.length,
-          unidades,
-          primeraFila: data.data[0]
-        });
+        applyExcelData(data.data);
       }
     } catch (error) {
       console.error('Error leyendo Excel:', error);
@@ -205,15 +231,7 @@ export default function Home() {
     }
   };
 
-  const canSend = () => {
-    if (!config.action || !config.dataFile || totalUnidades === 0) return false;
-    if (config.testMode && !config.testEmail) return false;
-    if (config.action === 'expensas' && pdfFiles.length === 0) return false;
-    if (config.action !== 'expensas' && selectedDeptos.length === 0) return false;
-    return true;
-  };
-
-  // AbortController para cancelar envíos
+  // AbortController para cancelar envios
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const handleCancelSend = () => {
@@ -341,18 +359,18 @@ export default function Home() {
           }
         }
       }
-    } catch (error: any) {
-      // No mostrar error si fue cancelado por el usuario
-      if (error.name === 'AbortError') {
-        console.log('Envío cancelado por el usuario');
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Envio cancelado por el usuario');
         return;
       }
-      console.error('💥 Error en handleConfirmSend:', error);
+      console.error('Error en handleConfirmSend:', error);
+      const message = error instanceof Error ? error.message : 'Error de conexion';
       setResult({
         success: false,
         sent: 0,
         errors: 0,
-        message: `Error: ${error.message || 'Error de conexión'}`,
+        message: `Error: ${message}`,
       });
     } finally {
       setSending(false);
@@ -428,7 +446,7 @@ export default function Home() {
                 </h3>
                 <p className="empty-state-description">
                   Necesitás un archivo Excel con los destinatarios.<br />
-                  Hacé click abajo o en "Gestionar Excel" arriba.
+                  Hace click abajo o en &ldquo;Gestionar Excel&rdquo; arriba.
                 </p>
                 <button
                   onClick={() => setShowExcelViewer(true)}
@@ -857,10 +875,13 @@ export default function Home() {
           setEdificios(edificios.map(e => e.id === edificio.id ? edificio : e));
         }}
         onEdificioDeleted={(id) => {
-          setEdificios(edificios.filter(e => e.id !== id));
-          if (selectedEdificioId === id) {
-            setSelectedEdificioId(edificios[0]?.id || null);
-          }
+          setEdificios(prev => {
+            const filtered = prev.filter(e => e.id !== id);
+            setSelectedEdificioId(prevSelected =>
+              prevSelected === id ? (filtered[0]?.id ?? null) : prevSelected
+            );
+            return filtered;
+          });
         }}
       />
 

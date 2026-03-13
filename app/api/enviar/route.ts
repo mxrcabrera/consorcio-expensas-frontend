@@ -1,9 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { spawn } from 'child_process';
 import { createInterface } from 'readline';
 import path from 'path';
 import fs from 'fs/promises';
 import { getEdificioById, createEnvioLog } from '@/lib/db';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+
+const PYTHON_CMD = process.platform === 'win32' ? 'py' : 'python3';
+
+function safeEnqueue(controller: ReadableStreamDefaultController, encoder: TextEncoder, data: object) {
+  try {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+  } catch {
+    // Stream already closed
+  }
+}
+
+function safeClose(controller: ReadableStreamDefaultController) {
+  try {
+    controller.close();
+  } catch {
+    // Stream already closed
+  }
+}
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -15,24 +35,14 @@ export async function POST(request: NextRequest) {
           const formData = await request.formData();
           const action = formData.get('action') as string;
           const testMode = formData.get('testMode') === 'true';
-          const testEmail = formData.get('testEmail') as string;
+          const testEmail = (formData.get('testEmail') as string) || '';
           const testEmailCount = parseInt(formData.get('testEmailCount') as string) || 0;
-          const pdfFolder = formData.get('pdfFolder') as string;
-          const diasCorte = formData.get('diasCorte') as string;
+          const pdfFolder = (formData.get('pdfFolder') as string) || '';
+          const diasCorte = (formData.get('diasCorte') as string) || '5';
           const subject = formData.get('subject') as string;
           const dataFile = formData.get('dataFile') as File;
           const buildingId = formData.get('buildingId') as string;
 
-          if (!action || !dataFile) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'error',
-              message: 'Faltan parámetros'
-            })}\n\n`));
-            controller.close();
-            return;
-          }
-
-          // Obtener config del edificio
           let buildingConfig = null;
           if (buildingId) {
             const edificio = getEdificioById(buildingId);
@@ -46,15 +56,45 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          const tempDir = path.join(process.cwd(), 'temp');
-          await fs.mkdir(tempDir, { recursive: true });
-          const tempExcelPath = path.join(tempDir, `data_${Date.now()}.xlsx`);
-          const bytes = await dataFile.arrayBuffer();
-          await fs.writeFile(tempExcelPath, Buffer.from(bytes));
+          // Resolve Excel file: uploaded file or saved file per building
+          let tempExcelPath: string;
+          let shouldCleanTemp = false;
 
-          // Determinar carpeta de PDFs: usar ruta_base del edificio directamente (los PDFs estan ahi)
+          const hasUploadedFile = dataFile && typeof dataFile !== 'string' && dataFile.size > 0;
+
+          if (hasUploadedFile) {
+            const tempDir = path.join(process.cwd(), 'temp');
+            await fs.mkdir(tempDir, { recursive: true });
+            tempExcelPath = path.join(tempDir, `data_${Date.now()}.xlsx`);
+            const bytes = await dataFile.arrayBuffer();
+            await fs.writeFile(tempExcelPath, Buffer.from(bytes));
+            shouldCleanTemp = true;
+          } else if (buildingId) {
+            const savedPath = path.join(DATA_DIR, buildingId, 'datos_maestro.xlsx');
+            try {
+              await fs.access(savedPath);
+              tempExcelPath = savedPath;
+            } catch {
+              safeEnqueue(controller, encoder, {
+                type: 'complete',
+                success: false,
+                message: 'No hay archivo Excel cargado para este edificio'
+              });
+              safeClose(controller);
+              return;
+            }
+          } else {
+            safeEnqueue(controller, encoder, {
+              type: 'complete',
+              success: false,
+              message: 'Faltan parametros: archivo Excel o edificio'
+            });
+            safeClose(controller);
+            return;
+          }
+
           let effectivePdfFolder = pdfFolder;
-          if (buildingConfig && buildingConfig.ruta_base) {
+          if (buildingConfig?.ruta_base) {
             effectivePdfFolder = buildingConfig.ruta_base;
           }
 
@@ -72,7 +112,6 @@ export async function POST(request: NextRequest) {
             '--no-confirm',
           ];
 
-          // Pasar config del edificio como JSON
           if (buildingConfig) {
             args.push('--building-config', JSON.stringify(buildingConfig));
           }
@@ -84,98 +123,92 @@ export async function POST(request: NextRequest) {
           console.log('[API] Ejecutando Python con args:', args);
           console.log('[API] CWD:', process.cwd());
 
-          // Enviar evento inicial para confirmar que el stream funciona
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          safeEnqueue(controller, encoder, {
             type: 'progress',
             line: 'Iniciando proceso de envio...'
-          })}\n\n`));
+          });
 
-          const pythonProcess = spawn('python', args, {
+          const pythonProcess = spawn(PYTHON_CMD, args, {
             stdio: ['pipe', 'pipe', 'pipe'],
             env: {
               ...process.env,
-              PYTHONUNBUFFERED: '1'
+              PYTHONUNBUFFERED: '1',
+              PYTHONIOENCODING: 'utf-8',
             }
           });
 
-          // Confirmar que Python se inicio
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          safeEnqueue(controller, encoder, {
             type: 'progress',
             line: 'Python iniciado, esperando output...'
-          })}\n\n`));
+          });
 
           let outputBuffer = '';
           let errorBuffer = '';
+          let closed = false;
 
-          // Leer stdout línea por línea
+          const closeStream = () => {
+            if (closed) return;
+            closed = true;
+            safeClose(controller);
+          };
+
           const rl = createInterface({
             input: pythonProcess.stdout,
             crlfDelay: Infinity
           });
 
           rl.on('line', (line) => {
+            if (closed) return;
             outputBuffer += line + '\n';
             console.log('[PY]', line);
-
-            // Enviar TODAS las lineas al frontend
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'progress',
-              line: line.trim()
-            })}\n\n`));
+            safeEnqueue(controller, encoder, { type: 'progress', line: line.trim() });
           });
 
-          // Capturar errores
           pythonProcess.stderr.on('data', (data) => {
+            if (closed) return;
             const errorText = data.toString();
             errorBuffer += errorText;
             console.error('[PY ERROR]', errorText);
-
-            // Enviar errores tambien
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            safeEnqueue(controller, encoder, {
               type: 'progress',
               line: `[ERROR] ${errorText.trim()}`
-            })}\n\n`));
+            });
           });
 
-          // Handler para errores de spawn
           pythonProcess.on('error', (err) => {
             console.error('[API ERROR] Error spawning Python:', err);
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            safeEnqueue(controller, encoder, {
               type: 'complete',
               success: false,
               message: `Error ejecutando Python: ${err.message}`
-            })}\n\n`));
-            controller.close();
+            });
+            closeStream();
           });
 
-          // Timeout de seguridad (5 minutos) - DEBE estar antes de on('close')
           const timeoutId = setTimeout(() => {
             if (!pythonProcess.killed) {
               console.warn('[API] Timeout: matando proceso Python');
               pythonProcess.kill();
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              safeEnqueue(controller, encoder, {
                 type: 'complete',
                 success: false,
                 message: 'Timeout: El proceso tardo mas de 5 minutos'
-              })}\n\n`));
-              controller.close();
+              });
+              closeStream();
             }
           }, 5 * 60 * 1000);
 
-          // Cuando termina el proceso
-          pythonProcess.on('close', async (code) => {
+          pythonProcess.on('close', (code) => {
             clearTimeout(timeoutId);
             console.log('[API] Python termino con codigo:', code);
 
-            // Limpiar archivo temporal
-            try {
-              await fs.unlink(tempExcelPath);
-            } catch (err) {
-              console.warn('[API] No se pudo eliminar archivo temporal:', err);
+            if (shouldCleanTemp) {
+              fs.unlink(tempExcelPath).catch((err) => {
+                console.warn('[API] No se pudo eliminar archivo temporal:', err);
+              });
             }
 
             if (code === 0) {
-              // Buscar resumen (case-insensitive)
               const matchSent = outputBuffer.match(/enviados:\s*(\d+)/i);
               const matchErrors = outputBuffer.match(/errores:\s*(\d+)/i);
               const matchSalteados = outputBuffer.match(/salteados:\s*(\d+)/i);
@@ -184,7 +217,6 @@ export async function POST(request: NextRequest) {
               const errors = matchErrors ? parseInt(matchErrors[1]) : 0;
               const salteados = matchSalteados ? parseInt(matchSalteados[1]) : 0;
 
-              // Guardar log del envio
               if (buildingId) {
                 try {
                   createEnvioLog({
@@ -194,22 +226,20 @@ export async function POST(request: NextRequest) {
                     total_errores: errors,
                     modo_test: testMode,
                   });
-                  console.log('[API] Log de envio guardado');
                 } catch (logErr) {
                   console.warn('[API] No se pudo guardar log de envio:', logErr);
                 }
               }
 
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              safeEnqueue(controller, encoder, {
                 type: 'complete',
                 success: true,
                 sent,
                 errors,
                 salteados,
                 message: `Completado: ${sent} enviados, ${errors} errores, ${salteados} salteados`
-              })}\n\n`));
+              });
             } else {
-              // Guardar log de error
               if (buildingId) {
                 try {
                   createEnvioLog({
@@ -224,29 +254,29 @@ export async function POST(request: NextRequest) {
                 }
               }
 
-              // Incluir tanto stderr como stdout para debug
               const errorMessage = errorBuffer || outputBuffer || 'Error desconocido en Python';
               console.error('[API] Python fallo. stderr:', errorBuffer);
               console.error('[API] Python fallo. stdout:', outputBuffer);
 
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              safeEnqueue(controller, encoder, {
                 type: 'complete',
                 success: false,
-                message: errorMessage.substring(0, 500) // Limitar longitud
-              })}\n\n`));
+                message: errorMessage.substring(0, 500)
+              });
             }
 
-            controller.close();
+            closeStream();
           });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Error desconocido';
           console.error('[API ERROR] Error en streaming:', error);
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          safeEnqueue(controller, encoder, {
             type: 'complete',
             success: false,
-            message: `Error del servidor: ${error.message}`
-          })}\n\n`));
-          controller.close();
+            message: `Error del servidor: ${message}`
+          });
+          safeClose(controller);
         }
       })();
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, History, CheckCircle, XCircle, TestTube, FileText, Zap, Bell } from 'lucide-react';
 
 interface EnvioLog {
@@ -35,18 +35,13 @@ export default function EnviosHistorial({
   const [logs, setLogs] = useState<EnvioLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (show && edificioId) {
-      loadLogs();
-    }
-  }, [show, edificioId]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     if (!edificioId) return;
 
     try {
       setLoading(true);
       const res = await fetch(`/api/envios-log?edificioId=${edificioId}&limit=50`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
         setLogs(data.data);
@@ -56,7 +51,13 @@ export default function EnviosHistorial({
     } finally {
       setLoading(false);
     }
-  };
+  }, [edificioId]);
+
+  useEffect(() => {
+    if (show && edificioId) {
+      loadLogs();
+    }
+  }, [show, edificioId, loadLogs]);
 
   const formatFecha = (fecha: string) => {
     const date = new Date(fecha);

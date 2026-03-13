@@ -61,6 +61,7 @@ export default function BuildingsManager({
     try {
       setLoading(true);
       const res = await fetch('/api/buildings');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
         setEdificios(data.data);
@@ -113,6 +114,7 @@ export default function BuildingsManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
+      if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.success) {
@@ -121,9 +123,9 @@ export default function BuildingsManager({
         setFormData(emptyForm);
         setShowForm(false);
       } else {
-        setError(data.error);
+        setError(data.error || 'Error al crear edificio');
       }
-    } catch (err) {
+    } catch {
       setError('Error al crear edificio');
     } finally {
       setSaving(false);
@@ -148,6 +150,7 @@ export default function BuildingsManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
+      if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.success) {
@@ -157,9 +160,9 @@ export default function BuildingsManager({
         setEditingId(null);
         setShowForm(false);
       } else {
-        setError(data.error);
+        setError(data.error || 'Error al actualizar edificio');
       }
-    } catch (err) {
+    } catch {
       setError('Error al actualizar edificio');
     } finally {
       setSaving(false);
@@ -171,15 +174,16 @@ export default function BuildingsManager({
 
     try {
       const res = await fetch(`/api/buildings/${id}`, { method: 'DELETE' });
+      if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.success) {
         setEdificios(edificios.filter((e) => e.id !== id));
         onEdificioDeleted(id);
       } else {
-        setError(data.error);
+        setError(data.error || 'Error al eliminar edificio');
       }
-    } catch (err) {
+    } catch {
       setError('Error al eliminar edificio');
     }
   };

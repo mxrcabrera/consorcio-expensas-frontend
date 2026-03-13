@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUnidadesByEdificio, upsertUnidades, getUnidadesCount } from '@/lib/db';
 
-// GET /api/unidades?edificioId=xxx
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,18 +12,18 @@ export async function GET(request: NextRequest) {
 
     const unidades = getUnidadesByEdificio(edificioId);
     return NextResponse.json({ success: true, data: unidades });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error interno';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
-// POST /api/unidades - Importar unidades desde Excel parseado
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { edificioId, unidades } = body;
 
-    if (!edificioId || !unidades || !Array.isArray(unidades)) {
+    if (!edificioId || !Array.isArray(unidades)) {
       return NextResponse.json(
         { success: false, error: 'edificioId y unidades son requeridos' },
         { status: 400 }
@@ -39,7 +38,8 @@ export async function POST(request: NextRequest) {
       message: `${count} unidades importadas correctamente`,
       count,
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error interno';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

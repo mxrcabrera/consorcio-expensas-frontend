@@ -1,33 +1,29 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { Edificio } from '@/types';
 
-// Ruta de la base de datos
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'consorcio.db');
 
-// Crear directorio data si no existe
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Singleton de la conexión
-let db: Database.Database | null = null;
+// HMR-safe singleton using globalThis
+const globalForDb = globalThis as unknown as { __db?: Database.Database };
 
 export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    initSchema();
+  if (!globalForDb.__db) {
+    globalForDb.__db = new Database(DB_PATH);
+    globalForDb.__db.pragma('journal_mode = WAL');
+    initSchema(globalForDb.__db);
   }
-  return db;
+  return globalForDb.__db;
 }
 
-function initSchema() {
-  const database = db!;
-
-  // Tabla edificios
+function initSchema(database: Database.Database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS edificios (
       id TEXT PRIMARY KEY,
@@ -41,7 +37,6 @@ function initSchema() {
     )
   `);
 
-  // Tabla unidades
   database.exec(`
     CREATE TABLE IF NOT EXISTS unidades (
       id TEXT PRIMARY KEY,
@@ -57,7 +52,6 @@ function initSchema() {
     )
   `);
 
-  // Tabla envios_log
   database.exec(`
     CREATE TABLE IF NOT EXISTS envios_log (
       id TEXT PRIMARY KEY,
@@ -72,9 +66,12 @@ function initSchema() {
   `);
 }
 
+function generateId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+}
+
 // ============ EDIFICIOS ============
 
-// Re-export Edificio from types for backwards compatibility
 export type { Edificio } from '@/types';
 
 export function getAllEdificios(): Edificio[] {
@@ -105,14 +102,16 @@ export function createEdificio(edificio: Omit<Edificio, 'created_at' | 'updated_
     now
   );
 
-  // Crear directorio del edificio
+  // Create building subdirectories (idempotent with recursive)
   const edificioDir = edificio.ruta_base;
-  if (!fs.existsSync(edificioDir)) {
-    fs.mkdirSync(path.join(edificioDir, 'pdfs'), { recursive: true });
-    fs.mkdirSync(path.join(edificioDir, 'logs'), { recursive: true });
-  }
+  fs.mkdirSync(path.join(edificioDir, 'pdfs'), { recursive: true });
+  fs.mkdirSync(path.join(edificioDir, 'logs'), { recursive: true });
 
-  return getEdificioById(edificio.id)!;
+  const created = getEdificioById(edificio.id);
+  if (!created) {
+    throw new Error(`Failed to create edificio: ${edificio.id}`);
+  }
+  return created;
 }
 
 export function updateEdificio(id: string, data: Partial<Omit<Edificio, 'id' | 'created_at' | 'updated_at'>>): Edificio | undefined {
@@ -158,10 +157,9 @@ export function updateEdificio(id: string, data: Partial<Omit<Edificio, 'id' | '
 export function deleteEdificio(id: string): boolean {
   const database = getDb();
 
-  // Verificar si tiene unidades
   const unidadesCount = database.prepare('SELECT COUNT(*) as count FROM unidades WHERE edificio_id = ?').get(id) as { count: number };
   if (unidadesCount.count > 0) {
-    return false; // No permitir eliminar si tiene unidades
+    return false;
   }
 
   const result = database.prepare('DELETE FROM edificios WHERE id = ?').run(id);
@@ -189,20 +187,18 @@ export function getUnidadesByEdificio(edificioId: string): Unidad[] {
 export function upsertUnidades(edificioId: string, unidades: Omit<Unidad, 'id' | 'edificio_id'>[]): void {
   const database = getDb();
 
-  // Eliminar unidades existentes del edificio
-  database.prepare('DELETE FROM unidades WHERE edificio_id = ?').run(edificioId);
+  const deleteExisting = database.prepare('DELETE FROM unidades WHERE edificio_id = ?');
 
-  // Insertar nuevas unidades
   const insert = database.prepare(`
     INSERT INTO unidades (id, edificio_id, n, nombre, email_propietario, email_inquilino, depto, tipo)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = database.transaction((units: Omit<Unidad, 'id' | 'edificio_id'>[]) => {
+    deleteExisting.run(edificioId);
     for (const unit of units) {
-      const id = `${edificioId}-${unit.n}-${Date.now()}`;
       insert.run(
-        id,
+        generateId(`${edificioId}-${unit.n}`),
         edificioId,
         unit.n,
         unit.nombre,
@@ -237,7 +233,7 @@ export interface EnvioLog {
 
 export function createEnvioLog(log: Omit<EnvioLog, 'id' | 'fecha'>): EnvioLog {
   const database = getDb();
-  const id = `log-${Date.now()}`;
+  const id = generateId('log');
 
   database.prepare(`
     INSERT INTO envios_log (id, edificio_id, tipo_accion, total_enviados, total_errores, modo_test)

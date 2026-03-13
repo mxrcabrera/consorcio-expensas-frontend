@@ -1017,6 +1017,30 @@ input[type="checkbox"]:focus-visible {
   outline: none;
 }
 
+/* TipTap ProseMirror overrides */
+.ProseMirror:focus {
+  outline: none;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 24px;
+}
+
+.ProseMirror li {
+  margin-bottom: 4px;
+}
+
+.ProseMirror p {
+  margin: 0 0 12px 0;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 2px solid #e0e0e0;
+  margin: 20px 0;
+}
+
 .template-editor-firma {
   padding: 2rem 3rem;
   padding-top: 1.5rem;

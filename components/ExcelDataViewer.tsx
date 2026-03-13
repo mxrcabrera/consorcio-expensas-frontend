@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Search, Upload, FileSpreadsheet } from 'lucide-react';
 
 interface ExcelDataViewerProps {
@@ -42,18 +42,50 @@ const sortColumns = (columns: string[]): string[] => {
 };
 
 export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: ExcelDataViewerProps) {
-  const [data, setData] = useState<any[]>([]);
-  const [filteredData, setFilteredData] = useState<any[]>([]);
+  const [data, setData] = useState<Record<string, unknown>[]>([]);
+  const [filteredData, setFilteredData] = useState<Record<string, unknown>[]>([]);
   const [sortedColumns, setSortedColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const loadExcelData = useCallback(async () => {
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/excel', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result = await res.json();
+      if (result.success) {
+        setData(result.data);
+        setFilteredData(result.data);
+
+        if (result.data.length > 0) {
+          const columns = Object.keys(result.data[0]);
+          const sorted = sortColumns(columns);
+          setSortedColumns(sorted);
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando Excel:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [file]);
+
   useEffect(() => {
     if (show && file) {
       loadExcelData();
     }
-  }, [show, file]);
+  }, [show, file, loadExcelData]);
 
   useEffect(() => {
     if (searchTerm) {
@@ -67,37 +99,6 @@ export default function ExcelDataViewer({ show, file, onClose, onFileSelect }: E
       setFilteredData(data);
     }
   }, [searchTerm, data]);
-
-  const loadExcelData = async () => {
-    if (!file) return;
-
-    try {
-      setLoading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/excel', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await res.json();
-      if (result.success) {
-        setData(result.data);
-        setFilteredData(result.data);
-        
-        if (result.data.length > 0) {
-          const columns = Object.keys(result.data[0]);
-          const sorted = sortColumns(columns);
-          setSortedColumns(sorted);
-        }
-      }
-    } catch (error) {
-      console.error('Error cargando Excel:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];

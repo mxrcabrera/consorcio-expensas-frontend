@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, readFile, unlink, mkdir } from 'fs/promises';
+import { writeFile, readFile, mkdir, access } from 'fs/promises';
 import path from 'path';
 import * as XLSX from 'xlsx';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+
+function getSavedExcelPath(edificioId: string): string {
+  return path.join(DATA_DIR, edificioId, 'datos_maestro.xlsx');
+}
 
 // Patrones para detectar columnas automáticamente
 const COLUMN_PATTERNS = {
@@ -134,104 +140,133 @@ function normalizeData(
   });
 }
 
+function parseExcelBuffer(buffer: Buffer, ext: string): { data: Record<string, unknown>[]; fileType: string } {
+  let data: Record<string, unknown>[] = [];
+  let fileType = 'unknown';
+
+  try {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+
+    if (workbook.SheetNames.length > 0) {
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+
+      data = XLSX.utils.sheet_to_json(worksheet, {
+        defval: null,
+        raw: false
+      }) as Record<string, unknown>[];
+
+      fileType = ext === 'csv' ? 'csv' : 'excel';
+    }
+  } catch {
+    try {
+      const textContent = buffer.toString('utf-8');
+      const lines = textContent.split(/\r?\n/).filter(line => line.trim());
+
+      if (lines.length > 0) {
+        const firstLine = lines[0];
+        const delimiter = firstLine.includes('\t') ? '\t' :
+                         firstLine.includes(';') ? ';' : ',';
+
+        const headers = firstLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
+
+        data = lines.slice(1).map(line => {
+          const values = line.split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
+          const row: Record<string, unknown> = {};
+          headers.forEach((header, i) => {
+            row[header] = values[i] || null;
+          });
+          return row;
+        });
+
+        fileType = 'text';
+      }
+    } catch {
+      // Could not parse
+    }
+  }
+
+  return { data, fileType };
+}
+
+function buildResponse(data: Record<string, unknown>[], fileType: string) {
+  if (data.length === 0) {
+    return NextResponse.json({
+      success: false,
+      error: 'No se pudieron extraer datos del archivo.',
+      data: [],
+      totalRows: 0
+    });
+  }
+
+  const headers = Object.keys(data[0]);
+  const sampleRows = data.slice(0, Math.min(10, data.length));
+  const detectedColumns = detectColumns(headers, sampleRows);
+  const normalizedData = normalizeData(data, detectedColumns);
+
+  return NextResponse.json({
+    success: true,
+    data: normalizedData,
+    totalRows: data.length,
+    fileType,
+    detectedColumns,
+    originalHeaders: headers
+  });
+}
+
+// Load saved Excel for a building
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const edificioId = searchParams.get('edificioId');
+
+    if (!edificioId) {
+      return NextResponse.json({ error: 'edificioId requerido' }, { status: 400 });
+    }
+
+    const savedPath = getSavedExcelPath(edificioId);
+
+    try {
+      await access(savedPath);
+    } catch {
+      return NextResponse.json({ success: true, data: [], totalRows: 0, saved: false });
+    }
+
+    const buffer = await readFile(savedPath);
+    const { data, fileType } = parseExcelBuffer(buffer, 'xlsx');
+    const response = buildResponse(data, fileType);
+    const body = await response.json();
+    return NextResponse.json({ ...body, saved: true });
+  } catch (error) {
+    console.error('Error loading saved Excel:', error);
+    return NextResponse.json({ error: 'Error cargando datos' }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const edificioId = formData.get('edificioId') as string | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'Archivo requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const tempDir = path.join(process.cwd(), 'temp');
-    await mkdir(tempDir, { recursive: true });
 
     const ext = file.name.split('.').pop()?.toLowerCase() || 'xlsx';
-    const tempPath = path.join(tempDir, `file_${Date.now()}.${ext}`);
-    await writeFile(tempPath, buffer);
+    const { data, fileType } = parseExcelBuffer(buffer, ext);
 
-    let data: Record<string, unknown>[] = [];
-    let fileType = 'unknown';
-
-    try {
-      // Intentar leer como Excel/CSV
-      const fileBuffer = await readFile(tempPath);
-      const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-
-      if (workbook.SheetNames.length > 0) {
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-
-        data = XLSX.utils.sheet_to_json(worksheet, {
-          defval: null,
-          raw: false
-        }) as Record<string, unknown>[];
-
-        fileType = ext === 'csv' ? 'csv' : 'excel';
-      }
-    } catch {
-      // Si falla, intentar leer como texto plano (CSV mal formateado, TSV, etc)
-      try {
-        const textContent = buffer.toString('utf-8');
-        const lines = textContent.split(/\r?\n/).filter(line => line.trim());
-
-        if (lines.length > 0) {
-          // Detectar delimitador
-          const firstLine = lines[0];
-          const delimiter = firstLine.includes('\t') ? '\t' :
-                           firstLine.includes(';') ? ';' : ',';
-
-          const headers = firstLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
-
-          data = lines.slice(1).map(line => {
-            const values = line.split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
-            const row: Record<string, unknown> = {};
-            headers.forEach((header, i) => {
-              row[header] = values[i] || null;
-            });
-            return row;
-          });
-
-          fileType = 'text';
-        }
-      } catch {
-        // No se pudo parsear
-      }
+    // Persist the file per building
+    if (edificioId && data.length > 0) {
+      const savedPath = getSavedExcelPath(edificioId);
+      await mkdir(path.dirname(savedPath), { recursive: true });
+      await writeFile(savedPath, buffer);
     }
 
-    // Limpiar archivo temporal
-    await unlink(tempPath);
-
-    if (data.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No se pudieron extraer datos del archivo. Asegurate de que sea un Excel, CSV, o archivo de texto con datos tabulares.',
-        data: [],
-        totalRows: 0
-      });
-    }
-
-    // Detectar columnas automáticamente
-    const headers = Object.keys(data[0]);
-    const sampleRows = data.slice(0, Math.min(10, data.length));
-    const detectedColumns = detectColumns(headers, sampleRows);
-
-    // Normalizar datos si detectamos columnas
-    const normalizedData = normalizeData(data, detectedColumns);
-
-    return NextResponse.json({
-      success: true,
-      data: normalizedData,
-      totalRows: data.length,
-      fileType,
-      detectedColumns,
-      originalHeaders: headers
-    });
+    return buildResponse(data, fileType);
   } catch (error) {
     console.error('Error procesando archivo:', error);
     return NextResponse.json(

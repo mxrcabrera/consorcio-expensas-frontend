@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Check, X } from 'lucide-react';
 
 interface ToastProps {
@@ -11,14 +11,18 @@ interface ToastProps {
 }
 
 export default function Toast({ show, message, type, onClose }: ToastProps) {
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (show) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
+      const timer = setTimeout(() => onCloseRef.current(), 3000);
       return () => clearTimeout(timer);
     }
-  }, [show, onClose]);
+  }, [show]);
 
   if (!show) return null;
 
@@ -32,9 +36,9 @@ export default function Toast({ show, message, type, onClose }: ToastProps) {
             <X className="w-5 h-5 text-white" />
           )}
         </div>
-        
+
         <p className="toast-message">{message}</p>
-        
+
         <button onClick={onClose} className="toast-close-btn">
           <X className="w-4 h-4 text-mineral-taupe" />
         </button>

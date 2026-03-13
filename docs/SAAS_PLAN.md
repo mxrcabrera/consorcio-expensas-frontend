@@ -20,8 +20,16 @@ Transformar la aplicación local de gestión de expensas en un SaaS multi-tenant
 | **5.1 Qué Reutilizar** | Detalle de componentes del sistema actual a migrar (referencia a SYSTEM_OVERVIEW.md). |
 | **5.2 Migración** | Conceptos NO se crean por defecto. Onboarding guía al admin a crearlos. |
 | **7.1 Roadmap** | Eliminadas referencias a "part-time" y fechas específicas. Solo fases y milestones. |
+| **2.0 Arquitectura** | Nueva sección "Arquitectura Dual-Client" con diagrama web + desktop. |
+| **2.1 Stack** | Agregado Tauri 2.x al stack de tecnologías. |
+| **2.2 Estructura** | Actualizada a monorepo (apps/web, apps/desktop, packages/ui, packages/lib). |
+| **3.5 Desktop** | Nueva sección "Desktop Client (Tauri)" con comparativa vs Electron. |
+| **7.1 Roadmap** | Nueva "FASE 1.5: Desktop Client" agregada. |
+| **DESKTOP_SETUP.md** | Nuevo archivo con instrucciones de setup Tauri. |
+| **Modos de Deployment** | Nueva sección "Deployment Modes" - Desktop Standalone (Fase 1) vs SaaS Cloud (Futuro). |
+| **Arquitectura Desktop** | Actualizada a SQLite local standalone (sin dependencia de Supabase). |
 
-*Última actualización: Enero 2026 - v1.1*
+*Última actualización: Enero 2026 - v1.3*
 
 ---
 
@@ -376,6 +384,92 @@ CREATE POLICY "Admins modifican" ON unidades
 
 ## 2. Arquitectura Técnica
 
+### 2.0 Deployment Modes
+
+El sistema tiene **dos modos de deployment** con diferentes características:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DEPLOYMENT MODES                                    │
+├─────────────────────────────────┬───────────────────────────────────────────┤
+│   MODO DESKTOP STANDALONE       │   MODO SAAS CLOUD                         │
+│   (Fase 1 - ACTUAL)             │   (Fase Futura)                           │
+├─────────────────────────────────┼───────────────────────────────────────────┤
+│                                 │                                           │
+│   ┌─────────────────────────┐   │   ┌─────────────────────────────────────┐ │
+│   │     Tauri App           │   │   │         SUPABASE (cloud)            │ │
+│   │  ┌───────────────────┐  │   │   │   Auth + PostgreSQL + Storage      │ │
+│   │  │   React (UI)      │  │   │   └─────────────┬─────────────────────┘ │
+│   │  └───────────────────┘  │   │                 │                       │
+│   │  ┌───────────────────┐  │   │       ┌─────────┴─────────┐             │
+│   │  │   Rust + SQLite   │  │   │       │                   │             │
+│   │  └───────────────────┘  │   │   ┌───▼───┐         ┌─────▼─────┐       │
+│   └─────────────────────────┘   │   │  Web  │         │  Desktop  │       │
+│             │                   │   │ Next.js│         │  Tauri    │       │
+│             │ SMTP only         │   └───────┘         └───────────┘       │
+│             ▼                   │                                           │
+│      Resend/SMTP                │                                           │
+│                                 │                                           │
+└─────────────────────────────────┴───────────────────────────────────────────┘
+```
+
+#### Modo Desktop Standalone (Fase 1 - ACTUAL)
+
+| Aspecto | Descripción |
+|---------|-------------|
+| **Base de datos** | SQLite local (archivo .db) |
+| **Tenancy** | Single-tenant (un consorcio por instalación) |
+| **Autenticación** | No requiere (app local, usuario único) |
+| **Conexión** | Solo para enviar emails (SMTP/Resend) |
+| **PDFs** | Guardados en filesystem local |
+| **Costo** | Gratis, sin límites de unidades |
+| **Target** | Administradores individuales, consorcios pequeños/medianos |
+
+**Stack Desktop:**
+- Frontend: React + Vite (WebView2)
+- Backend: Rust (Tauri)
+- Database: SQLite (rusqlite)
+- Emails: SMTP o Resend API
+- PDFs: Local filesystem
+
+#### Modo SaaS Cloud (Fase Futura)
+
+| Aspecto | Descripción |
+|---------|-------------|
+| **Base de datos** | Supabase PostgreSQL |
+| **Tenancy** | Multi-tenant con RLS |
+| **Autenticación** | Supabase Auth (email, OAuth) |
+| **Conexión** | Siempre online |
+| **PDFs** | Supabase Storage |
+| **Costo** | Planes de suscripción (Free, Básico, Pro, Enterprise) |
+| **Target** | Empresas administradoras con múltiples consorcios |
+
+**Stack Cloud:**
+- Frontend Web: Next.js 15 (Netlify)
+- Frontend Desktop: Tauri wrapper (cliente de Supabase)
+- Backend: Supabase (Auth + PostgreSQL + Storage + RLS)
+- Emails: Resend
+- Pagos: MercadoPago
+
+### 2.0.1 Migración Desktop → Cloud
+
+El desktop standalone puede exportar datos para migrar al SaaS:
+
+```typescript
+// Export desde desktop
+const exportData = {
+  consorcio: { nombre, direccion, cuit, config },
+  unidades: [...],
+  conceptos: [...],
+  periodos: [...],
+  liquidaciones: [...],
+  pagos: [...]
+};
+
+// Import en SaaS (con nuevo consorcio_id)
+await importFromDesktop(exportData, newConsorcioId);
+```
+
 ### 2.1 Stack Definitivo
 
 | Capa | Tecnología | Justificación |
@@ -390,12 +484,74 @@ CREATE POLICY "Admins modifican" ON unidades
 | **Emails** | Resend | Simple, buena deliverability |
 | **Pagos** | MercadoPago | Estándar en Argentina |
 | **Hosting** | Netlify | Restricción del proyecto |
+| **Desktop** | Tauri 2.x | Rust-based, ~15MB, auto-updates |
 | **Monitoreo** | Sentry (free tier) | Errores en producción |
 
-### 2.2 Estructura del Proyecto
+### 2.2 Estructura del Proyecto (Monorepo)
+
+#### Desktop Standalone (Fase 1 - Actual)
+
+```
+consorcio-saas/                    # pnpm workspace root
+├── apps/
+│   └── desktop/                   # Tauri app (PRIMARY)
+│       ├── src/
+│       │   ├── App.tsx            # React entry
+│       │   ├── pages/             # App pages
+│       │   ├── components/        # UI components
+│       │   └── lib/
+│       │       └── tauri.ts       # Tauri IPC bindings
+│       ├── src-tauri/
+│       │   ├── src/
+│       │   │   ├── main.rs        # Rust entry
+│       │   │   ├── db.rs          # SQLite operations
+│       │   │   ├── commands.rs    # Tauri commands
+│       │   │   ├── pdf.rs         # PDF generation
+│       │   │   └── email.rs       # Email sending
+│       │   ├── migrations/        # SQLite migrations
+│       │   ├── tauri.conf.json
+│       │   └── Cargo.toml
+│       └── package.json
+│
+├── packages/
+│   ├── ui/                        # Shared React components
+│   ├── lib/                       # Shared utilities
+│   └── types/                     # TypeScript interfaces
+│
+├── pnpm-workspace.yaml
+└── package.json
+```
+
+#### SaaS Cloud (Fase Futura)
 
 ```
 consorcio-saas/
+├── apps/
+│   ├── web/                       # Next.js app (Netlify)
+│   │   ├── app/
+│   │   ├── components/
+│   │   └── package.json
+│   │
+│   └── desktop/                   # Tauri wrapper (Supabase client)
+│       └── ...
+│
+├── packages/
+│   ├── ui/                        # Shared React components
+│   └── lib/
+│       ├── supabase/              # Supabase client
+│       └── utils/
+│
+├── supabase/
+│   └── migrations/                # PostgreSQL migrations
+│
+└── prisma/
+    └── schema.prisma              # Prisma schema
+```
+
+**Detalle de apps/web (Next.js):**
+
+```
+apps/web/
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/page.tsx
@@ -1300,6 +1456,92 @@ Proveedores comunes y sus formatos:
 
 ---
 
+## 3.5 Desktop Client (Tauri + SQLite)
+
+### Por qué Tauri vs Electron
+
+| Aspecto | Tauri | Electron |
+|---------|-------|----------|
+| **Tamaño installer** | ~15MB | ~150MB |
+| **Memoria en uso** | ~50MB | ~300MB+ |
+| **Lenguaje backend** | Rust | Node.js |
+| **WebView** | Nativo del OS | Chromium bundled |
+| **SQLite** | rusqlite (nativo) | better-sqlite3 |
+| **Seguridad** | Sandbox estricto | Requiere config |
+| **Auto-updates** | Plugin oficial | electron-updater |
+
+### Arquitectura Desktop Standalone
+
+```
+┌────────────────────────────────────────┐
+│           Tauri App (Windows)          │
+├────────────────────────────────────────┤
+│  ┌──────────────────────────────────┐  │
+│  │     React App (WebView2)         │  │
+│  │     - UI components              │  │
+│  │     - State management           │  │
+│  │     - Tauri IPC calls            │  │
+│  └──────────────────────────────────┘  │
+├────────────────────────────────────────┤
+│  ┌──────────────────────────────────┐  │
+│  │     Rust Backend                 │  │
+│  │     - SQLite (rusqlite)          │  │
+│  │     - PDF generation             │  │
+│  │     - Email sending (SMTP)       │  │
+│  │     - File system access         │  │
+│  │     - Auto-updater               │  │
+│  └──────────────────────────────────┘  │
+└────────────────────────────────────────┘
+            │
+            │ SMTP/API (emails only)
+            ▼
+      Resend / SMTP Server
+```
+
+**Principios clave:**
+- **Standalone**: No requiere backend cloud, toda la data es local
+- **Single-tenant**: Un consorcio por instalación
+- **Sin auth**: App local para un solo usuario/admin
+- **SQLite embedded**: rusqlite con datos en %APPDATA%
+- **Conexión mínima**: Solo SMTP para enviar emails
+- **Solo Windows**: Target inicial (90%+ del mercado admin consorcios)
+
+### Database Location
+
+```
+Windows: %APPDATA%\com.consorcio.expensas\
+         ├── data.db           # SQLite database
+         └── pdfs/             # Generated PDFs
+             └── 2026-01/
+                 ├── UF01_Expensas.pdf
+                 └── ...
+```
+
+### Tauri Commands (IPC)
+
+```typescript
+// Frontend calls Rust backend via invoke()
+import { invoke } from '@tauri-apps/api/core';
+
+// CRUD operations
+await invoke('get_unidades');
+await invoke('create_periodo', { mes: 1, anio: 2026 });
+await invoke('calcular_liquidaciones', { periodoId: 1 });
+await invoke('generar_pdf', { liquidacionId: 1 });
+await invoke('enviar_expensas', { periodoId: 1, config });
+```
+
+### Configuración
+
+Ver [DESKTOP_SETUP.md](./DESKTOP_SETUP.md) para instrucciones detalladas de:
+- Setup del entorno de desarrollo
+- Schema SQLite completo
+- Rust commands implementation
+- PDF generation options
+- Email configuration (SMTP/Resend)
+
+---
+
 ## 4. Costos de Infraestructura
 
 ### 4.1 Costos Base Mensuales (USD)
@@ -1530,38 +1772,51 @@ async function migrarConsorcioConstitución() {
 ### 7.1 Fases de Desarrollo ⚠️ ACTUALIZADO
 
 ```
-FASE 1: MVP Core
-├── Setup proyecto (Supabase, Prisma, Next.js)
-├── Auth + Onboarding
+FASE 1: Desktop Standalone (ACTUAL)
+├── Setup proyecto Tauri + SQLite
+├── UI React con Vite
+├── SQLite schema y migrations
 ├── CRUD Consorcio/Unidades/Conceptos
-├── UI básica con shadcn/ui
 ├── Liquidación
 │   ├── Crear período
-│   ├── Cargar gastos (manual + import Excel)
+│   ├── Cargar gastos (manual)
 │   ├── Calcular prorrateo
-│   ├── Generar PDFs
+│   ├── Generar PDFs locales
 │   └── Preview liquidación
 ├── Comunicaciones
-│   ├── Integrar Resend
+│   ├── Configurar SMTP/Resend
 │   ├── Envío masivo (expensas + avisos generales)
-│   └── Historial
+│   └── Historial de envíos
 ├── Pagos & Cobranzas
 │   ├── Registrar pagos
 │   ├── Estado de cuenta
 │   └── Lista deudores
-└── Billing
-    ├── Integrar MercadoPago
-    ├── Planes y límites
-    └── Landing page
+├── Build Windows installer (.exe NSIS)
+└── Auto-updates (tauri-plugin-updater)
 
-FASE 2: Portal Vecinos
+FASE 2: Mejoras Desktop
+├── Import Excel para gastos
+├── Backup/restore de datos
+├── Export a JSON para migración
+├── Reportes avanzados
+└── Parsing de facturas con IA (opcional)
+
+FASE 3: SaaS Cloud (Futuro)
+├── Setup Supabase (Auth + PostgreSQL + Storage)
+├── Migración a multi-tenant con RLS
+├── App web Next.js
+├── Desktop como cliente de Supabase
+├── Billing con MercadoPago
+└── Landing page
+
+FASE 4: Portal Vecinos
 ├── Login propietarios/inquilinos
 ├── Ver expensas propias
 ├── Informar pagos
 ├── Reclamos
 └── Reserva amenities
 
-FASE 3: Integraciones
+FASE 5: Integraciones
 ├── App móvil PWA
 ├── MercadoPago cobros (QR en expensa)
 ├── AFIP (facturación electrónica)
@@ -1572,12 +1827,13 @@ FASE 3: Integraciones
 
 | Milestone | Criterio de Éxito |
 |-----------|-------------------|
-| **M1: Skeleton** | Auth + CRUD funcionando en local |
-| **M2: Liquidación** | Generar PDF de expensa completo |
-| **M3: Envío** | Enviar emails reales con adjuntos |
-| **M4: Beta Live** | 1 liquidación real enviada a Consorcio Constitución |
-| **M5: Launch** | Billing activo, landing online |
-| **M6: 10 Clientes** | 10 consorcios pagando |
+| **M1: Skeleton** | Tauri + SQLite + React funcionando |
+| **M2: CRUD** | Consorcio, Unidades, Conceptos operativos |
+| **M3: Liquidación** | Generar PDF de expensa completo y guardarlo local |
+| **M4: Envío** | Enviar emails reales via SMTP/Resend con adjuntos |
+| **M5: Beta Live** | 1 liquidación real enviada a Consorcio Constitución |
+| **M6: Installer** | Windows .exe instalable distribuido |
+| **M7: SaaS Launch** | (Futuro) Versión cloud con billing activo |
 
 ### 7.3 Definición de "Done" por Feature
 
@@ -1681,27 +1937,47 @@ FASE 3: Integraciones
 
 ## 10. Próximos Pasos Inmediatos
 
-### Semana 1-2
+### Fase 1: Desktop Standalone
 
-- [ ] Crear proyecto en Supabase
-- [ ] Configurar Next.js 15 con Prisma
-- [ ] Definir schema Prisma inicial
-- [ ] Setup auth con Supabase
-- [ ] Configurar Netlify con GitHub
+#### Semana 1-2
 
-### Semana 3-4
-
+- [ ] Inicializar proyecto Tauri 2.x
+- [ ] Configurar React + Vite frontend
+- [ ] Crear schema SQLite (migrations)
+- [ ] Implementar Rust commands básicos
 - [ ] UI: Layout dashboard con sidebar
-- [ ] CRUD Consorcio (crear, editar)
-- [ ] CRUD Unidades (lista, crear, editar)
-- [ ] Configurar shadcn/ui
 
-### Para Después
+#### Semana 3-4
+
+- [ ] CRUD Consorcio (crear, editar config)
+- [ ] CRUD Unidades (lista, crear, editar)
+- [ ] CRUD Conceptos de gasto
+- [ ] Crear período mensual
+- [ ] Cargar gastos del período
+
+#### Semana 5-6
+
+- [ ] Calcular liquidaciones (prorrateo)
+- [ ] Generar PDFs locales
+- [ ] Preview liquidación
+- [ ] Configurar SMTP/Resend
+- [ ] Envío masivo de emails
+
+#### Semana 7-8
+
+- [ ] Registrar pagos
+- [ ] Estado de cuenta por unidad
+- [ ] Lista de deudores
+- [ ] Build Windows installer (NSIS)
+- [ ] Configurar auto-updates
+
+### Para Después (SaaS Cloud)
 
 - [ ] Registrar dominio
-- [ ] Configurar Resend
+- [ ] Crear proyecto Supabase
+- [ ] Migrar schema a PostgreSQL
+- [ ] Implementar RLS multi-tenant
 - [ ] Cuenta MercadoPago vendedor
-- [ ] Diseñar landing page
 
 ---
 

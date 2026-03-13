@@ -6,19 +6,21 @@ export async function POST(request: NextRequest) {
   try {
     const { pdfFolder, unidades } = await request.json();
 
-    if (!pdfFolder || !unidades) {
+    if (!pdfFolder || !Array.isArray(unidades)) {
       return NextResponse.json(
-        { error: 'PDF folder y unidades requeridos' },
+        { error: 'PDF folder y unidades (array) requeridos' },
         { status: 400 }
       );
     }
 
-    const validation: any[] = [];
+    const basePath = path.resolve(pdfFolder);
+
+    const validation: { unidad: string; expensas: boolean; detalle: boolean; completo: boolean }[] = [];
     let totalPDFs = 0;
 
     for (const unidad of unidades) {
-      const pdf1 = path.join(pdfFolder, `Expensas ${unidad}.pdf`);
-      const pdf2 = path.join(pdfFolder, `Detalle expensas ${unidad}.pdf`);
+      const pdf1 = path.join(basePath, `Expensas ${unidad}.pdf`);
+      const pdf2 = path.join(basePath, `Detalle expensas ${unidad}.pdf`);
 
       let exists1 = false;
       let exists2 = false;
@@ -27,16 +29,16 @@ export async function POST(request: NextRequest) {
         await fs.access(pdf1);
         exists1 = true;
         totalPDFs++;
-      } catch {}
+      } catch { /* not found */ }
 
       try {
         await fs.access(pdf2);
         exists2 = true;
         totalPDFs++;
-      } catch {}
+      } catch { /* not found */ }
 
       validation.push({
-        unidad,
+        unidad: String(unidad),
         expensas: exists1,
         detalle: exists2,
         completo: exists1 && exists2,
@@ -44,10 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ validation, totalPDFs });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Error validando PDFs' },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: 'Error validando PDFs' }, { status: 500 });
   }
 }

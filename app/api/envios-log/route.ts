@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnviosLogByEdificio, createEnvioLog } from '@/lib/db';
 
-// GET /api/envios-log?edificioId=xxx&limit=50
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const edificioId = searchParams.get('edificioId');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const rawLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Number.isNaN(rawLimit) || rawLimit < 1 ? 50 : rawLimit;
 
     if (!edificioId) {
       return NextResponse.json({ success: false, error: 'edificioId requerido' }, { status: 400 });
@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
 
     const logs = getEnviosLogByEdificio(edificioId, limit);
     return NextResponse.json({ success: true, data: logs });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error interno';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
-// POST /api/envios-log - Crear nuevo registro de envío
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: log });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error interno';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

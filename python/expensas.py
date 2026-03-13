@@ -146,23 +146,113 @@ def cargar_archivo_html(nombre, solo_body=False):
     return contenido
 
 
+BASE_FONT_STYLE = (
+    "color: rgb(31, 78, 120); "
+    "font-family: 'Trebuchet MS', Arial, sans-serif; "
+    "font-size: 15px;"
+)
+
+
+def _ensure_inline_style(tag_match, required_props):
+    """Ensure an HTML tag has the required inline style properties."""
+    full_tag = tag_match.group(0)
+    existing_style = ''
+    style_match = re.search(r'style="([^"]*)"', full_tag, re.IGNORECASE)
+    if style_match:
+        existing_style = style_match.group(1)
+
+    additions = []
+    for prop, value in required_props.items():
+        if prop not in existing_style:
+            additions.append(f"{prop}: {value}")
+
+    if not additions:
+        return full_tag
+
+    new_style = existing_style.rstrip('; ') + '; ' + '; '.join(additions) if existing_style else '; '.join(additions)
+    if style_match:
+        return full_tag[:style_match.start(1)] + new_style + full_tag[style_match.end(1):]
+    # No style attribute, insert one before the closing >
+    insert_pos = full_tag.rfind('>')
+    return full_tag[:insert_pos] + f' style="{new_style}"' + full_tag[insert_pos:]
+
+
+def sanitize_html_for_email(html):
+    """Clean and normalize HTML before sending to email clients.
+
+    Fixes artifacts from the contentEditable WYSIWYG editor and ensures
+    consistent inline styles (Gmail strips <style> blocks from <head>).
+    """
+    # Remove empty <li> with <p><br></p> inside
+    html = re.sub(
+        r'<li[^>]*>\s*<p[^>]*>\s*(<strong>|<b>)?\s*<br\s*/?>(\s*</strong>|\s*</b>)?\s*</p>\s*</li>',
+        '', html, flags=re.IGNORECASE
+    )
+    # Remove empty <li> with just whitespace or <br>
+    html = re.sub(
+        r'<li[^>]*>\s*(<br\s*/?>)?\s*</li>',
+        '', html, flags=re.IGNORECASE
+    )
+    # Remove empty <ul> or <ol> tags
+    html = re.sub(
+        r'<(ul|ol)[^>]*>\s*</(ul|ol)>',
+        '', html, flags=re.IGNORECASE
+    )
+    # Strip literal '* ' at start of bold text
+    html = re.sub(
+        r'(<strong[^>]*>)\s*\*\s+',
+        r'\1', html, flags=re.IGNORECASE
+    )
+    html = re.sub(
+        r'(<b[^>]*>)\s*\*\s+',
+        r'\1', html, flags=re.IGNORECASE
+    )
+
+    # Ensure consistent inline styles on all block elements (Gmail ignores <style>)
+    base_props = {
+        'font-family': "'Trebuchet MS', Arial, sans-serif",
+        'color': 'rgb(31, 78, 120)',
+        'font-size': '15px',
+    }
+    for tag in ['p', 'ul', 'ol', 'li']:
+        html = re.sub(
+            rf'<{tag}(\s[^>]*)?>',
+            lambda m, fp=base_props: _ensure_inline_style(m, fp),
+            html, flags=re.IGNORECASE
+        )
+    # Headings get larger font sizes
+    for tag, size in [('h1', '20px'), ('h2', '18px'), ('h3', '16px')]:
+        heading_props = {**base_props, 'font-size': size}
+        html = re.sub(
+            rf'<{tag}(\s[^>]*)?>',
+            lambda m, fp=heading_props: _ensure_inline_style(m, fp),
+            html, flags=re.IGNORECASE
+        )
+
+    return html
+
+
 def combinar_plantilla_con_firma(plantilla_html, firma_body):
     """Combina plantilla HTML con firma insertandola antes del cierre de body
 
     La firma se inserta despues del ultimo </div> pero antes de </body>
     para evitar heredar estilos del contenedor principal.
+    Sanitizes the FINAL combined HTML to fix editor artifacts and ensure
+    consistent inline styles across both template and firma.
     """
     # Buscar el cierre de </body> y insertar firma antes
+    combined = plantilla_html
     if '</body>' in plantilla_html.lower():
-        # Encontrar posicion del </body> (case insensitive)
         match = re.search(r'</body>', plantilla_html, re.IGNORECASE)
         if match:
             pos = match.start()
-            # Envolver firma en su propio div para aislar estilos
             firma_wrapped = f'\n    <div style="font-family: \'Trebuchet MS\', Arial, sans-serif;">\n{firma_body}\n    </div>\n'
-            return plantilla_html[:pos] + firma_wrapped + plantilla_html[pos:]
-    # Si no hay </body>, simplemente concatenar
-    return plantilla_html + firma_body
+            combined = plantilla_html[:pos] + firma_wrapped + plantilla_html[pos:]
+    else:
+        combined = plantilla_html + firma_body
+
+    # Sanitize the FULL combined HTML (template + firma)
+    return sanitize_html_for_email(combined)
 
 
 def validar_pdfs(numeros):
