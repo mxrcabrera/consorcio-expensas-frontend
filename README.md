@@ -1,147 +1,115 @@
-# 🏢 Consorcio Expensas - Sistema de Notificaciones
+# Consorcio Expensas
 
-Sistema automatizado para envío de expensas, avisos de corte de luz y comunicados generales para administración de consorcios.
+Automated email notification system for building administrators. Sends monthly expense reports, power outage notices, and general announcements to unit owners and tenants — with PDF attachments, Excel-based contact management, and real-time sending progress.
 
-## 🚀 Features
+## What It Does
 
-- ✅ Envío masivo de expensas con PDFs adjuntos
-- ✅ Avisos de corte de luz programados
-- ✅ Comunicados generales del consorcio
-- ✅ Modo test para pruebas
-- ✅ Validación de PDFs en tiempo real
-- ✅ Editor de templates HTML
-- ✅ Viewer de datos Excel
-- ✅ Progreso en tiempo real con SSE
+- **Three notification types**: monthly expenses (with PDF attachments), power cut notices, and general announcements
+- **Multi-building management** — each building has its own sender identity, units, and send history
+- **Excel-based contacts** — upload spreadsheets with unit data (apartment, owner name, email)
+- **PDF validation** — verifies expense PDFs exist before sending (format: `Expensas [N].pdf` + `Detalle expensas [N].pdf`)
+- **HTML template editor** — customize email templates with variable interpolation (`{mes_expensas}`, `{nombre}`, `{depto}`)
+- **Real-time progress** — Server-Sent Events (SSE) stream per-email status with cancel support
+- **Test mode** — send to 1, 5, or all recipients to avoid Gmail rate limits
+- **Send history** — logs all sends with success/error counts per building
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Frontend:** Next.js 14 + TypeScript + Tailwind CSS
-- **Backend:** Next.js API Routes + Python
-- **Email:** Gmail API
-- **Archivos:** openpyxl (Excel), PDFs
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Frontend | React 19, Tailwind CSS 4 |
+| Database | SQLite (better-sqlite3) |
+| Email | Gmail API (OAuth2) via Python subprocess |
+| Excel | xlsx library |
+| Rich Text | TipTap editor |
+| Icons | Lucide React |
+| Testing | Vitest + Testing Library |
 
-## 📦 Instalación
+## Getting Started
 
-### Requisitos
+### Prerequisites
+
 - Node.js 18+
-- Python 3.8+
-- Cuenta de Gmail con API habilitada
+- Python 3.8+ with `pip install google-auth-oauthlib google-api-python-client openpyxl pandas`
+- Google Cloud project with Gmail API enabled + OAuth2 Desktop credentials
 
 ### Setup
 
-1. **Clonar el repo:**
 ```bash
-git clone https://github.com/mxrcabrera/consorcio-expensas-frontend.git
-cd consorcio-expensas-frontend
-```
-
-2. **Instalar dependencias Node:**
-```bash
+# Install dependencies
 npm install
-```
 
-3. **Instalar dependencias Python:**
-```bash
-pip install google-auth-oauthlib google-auth-httplib2 google-api-python-client openpyxl
-```
+# Place your Google OAuth credentials
+cp credentials.json .    # Download from Google Cloud Console
 
-4. **Configurar Gmail API:**
-- Ir a [Google Cloud Console](https://console.cloud.google.com/)
-- Crear proyecto y habilitar Gmail API
-- Descargar `credentials.json` y ponerlo en la raíz del proyecto
-
-5. **Iniciar desarrollo:**
-```bash
+# Start dev server (localhost:3000)
 npm run dev
+
+# First email send will open browser for Gmail authorization
+# token.pickle is generated automatically after auth
 ```
 
-## 📁 Estructura del Proyecto
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Build for production |
+| `npm run test` | Run tests (Vitest) |
+| `npm run lint` | Run ESLint |
+
+## Architecture
+
 ```
-consorcio-expensas-frontend/
-├── app/
-│   ├── api/
-│   │   ├── enviar/         # API de envío con streaming
-│   │   ├── excel/          # Parser de Excel
-│   │   ├── templates/      # Gestión de templates
-│   │   └── validate-pdfs/  # Validación de PDFs
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx            # Página principal
-├── components/
-│   ├── ActionSelector.tsx
-│   ├── ConfigSummary.tsx
-│   ├── ConfirmationModal.tsx
-│   ├── CorteLuzConfig.tsx
-│   ├── ExcelDataViewer.tsx
-│   ├── FileUpload.tsx
-│   ├── Header.tsx
-│   ├── PDFFolderInput.tsx
-│   ├── PDFValidator.tsx
-│   ├── ProgressBar.tsx
-│   ├── SendButton.tsx
-│   ├── SendingProgress.tsx
-│   ├── SubjectInput.tsx
-│   ├── TemplateEditor.tsx
-│   ├── TemplatePreview.tsx
-│   └── TestModeToggle.tsx
-├── lib/
-│   └── utils.ts            # Utilidades compartidas
-├── python/
-│   ├── expensas.py         # Sistema de envío Python
-│   └── wrapper.py          # CLI wrapper
-├── templates/              # Templates HTML de emails
-│   ├── aviso_general.html
-│   ├── corte_luz.html
-│   ├── expensas.html
-│   └── firma.html
-├── types/
-│   └── index.ts            # Tipos TypeScript
-├── temp/                   # Archivos temporales
-├── logs/                   # Logs de envíos
-└── public/                 # Assets estáticos
+┌────────────────────────────────────────────────────┐
+│              Next.js Frontend (SPA)                 │
+│  Building selector │ Excel upload │ Template editor  │
+│  PDF validation │ Send progress │ History            │
+└──────────────────────┬─────────────────────────────┘
+                       │ REST API + SSE
+┌──────────────────────┴─────────────────────────────┐
+│              Next.js API Routes                     │
+│  /api/buildings  /api/excel  /api/enviar            │
+│  /api/templates  /api/unidades  /api/validate-pdfs  │
+└──────┬───────────────────────────────┬─────────────┘
+       │                               │
+       ▼                               ▼
+    SQLite                    Python subprocess
+  (better-sqlite3)           (Gmail API + OAuth2)
+  buildings, units,          Send emails with
+  send history               PDF attachments
 ```
 
-## 🔧 Configuración
+### Key Components
 
-El sistema usa un archivo Excel con las siguientes columnas:
-- `N`: Número de unidad funcional
-- `Depto`: Nombre del departamento
-- `Email`: Email del propietario
-- `Email inquilino`: Email del inquilino (opcional)
-- `CC`: Si debe enviar copia al inquilino (S/N)
+| Component | Purpose |
+|-----------|---------|
+| `BuildingsManager` | CRUD for buildings with sender identity |
+| `ExcelDataViewer` | Upload and preview unit spreadsheets |
+| `TemplateEditor` | HTML email template editing with TipTap |
+| `SendingProgress` | Real-time SSE progress with cancel |
+| `ConfirmationModal` | Pre-send review with recipient count |
+| `EnviosHistorial` | Send history with filters |
 
-Los PDFs deben seguir el formato:
-- `Expensas [N].pdf` (ej: `Expensas A1.pdf`)
-- `Detalle expensas [N].pdf` (ej: `Detalle expensas A1.pdf`)
+### Email Flow
 
-## 📧 Uso
+1. Select building and action type (expenses/power cut/announcement)
+2. Upload Excel with unit contacts
+3. Validate PDFs exist (expenses only)
+4. Review in confirmation modal
+5. POST to `/api/enviar` spawns Python subprocess
+6. Python sends via Gmail API, streams progress via SSE
+7. Results logged to `envios_log` table
 
-1. **Seleccionar tipo de acción:** Expensas / Corte Luz / Avisos Generales
-2. **Configurar modo test** (opcional): Envía todo a un solo email
-3. **Subir archivo Excel** con destinatarios
-4. **Para expensas:** Especificar carpeta con PDFs
-5. **Validar** configuración y PDFs
-6. **Confirmar y enviar**
+## Configuration
 
-## 🎨 Funcionalidades
+No `.env` file needed. Configuration via:
+- `credentials.json` — Google OAuth client (gitignored)
+- `token.pickle` — Gmail access token, auto-generated (gitignored)
+- `data/consorcio.db` — SQLite database (gitignored)
+- `templates/` — HTML email templates (expensas, corte_luz, aviso_general, firma)
 
-- **Editor de Templates:** Modificar HTML de emails en tiempo real
-- **Validador de PDFs:** Verifica que existan todos los archivos necesarios
-- **Viewer de Excel:** Previsualizar datos antes de enviar
-- **Progreso en tiempo real:** Ver envíos en vivo con Server-Sent Events
-- **Modo Test:** Probar sin enviar a destinatarios reales
-
-## 🔐 Seguridad
-
-- ✅ Credenciales de Gmail nunca se suben al repo (`.gitignore`)
-- ✅ Modo test para validar antes de enviar
-- ✅ Confirmación obligatoria antes de envíos masivos
-- ✅ Validación de archivos y emails
-
-## 👨‍💻 Desarrollo
-
-**MxrCabrera Dev** - 2025
-
-## 📄 Licencia
+## License
 
 MIT
